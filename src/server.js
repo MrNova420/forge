@@ -6055,7 +6055,17 @@ app.post('/providers', (req, res) => {
   const { name, apiKey, baseUrl, enabled = true } = req.body;
   if (!name) return res.status(400).json({ error: 'name required' });
   const providers = loadProviders();
-  providers[name] = { ...providers[name], enabled, apiKey: apiKey || providers[name]?.apiKey || '', baseUrl: baseUrl || providers[name]?.baseUrl || '' };
+  // Deduplicate key — if user accidentally pastes key multiple times (e.g. sk-or-v1-xxx repeated)
+  let cleanKey = apiKey || providers[name]?.apiKey || '';
+  if (cleanKey.length > 100) {
+    // Try to detect repeating pattern: if the string is N copies of the same substring
+    const half = Math.floor(cleanKey.length / 2);
+    for (let len = 20; len <= half; len++) {
+      const candidate = cleanKey.slice(0, len);
+      if (cleanKey.split(candidate).join('') === '') { cleanKey = candidate; break; }
+    }
+  }
+  providers[name] = { ...providers[name], enabled, apiKey: cleanKey, baseUrl: baseUrl || providers[name]?.baseUrl || '' };
   saveProviders(providers);
   res.json({ ok: true, name });
 });
