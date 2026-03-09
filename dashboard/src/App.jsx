@@ -1041,7 +1041,7 @@ function AgentAction({ event }) {
   )
 }
 
-function Chat() {
+function Chat({ onSwitchToSessions, sessionToLoad, onSessionLoaded }) {
   const [msgs,setMsgs]=useState([{role:'assistant',content:"Hi! I'm Forge \u2014 your local AI dev assistant. Running 100% locally on your GPU.\n\nDescribe any project idea and I'll plan it out, then queue it for the dev team to build."}])
   const [input,setInput]=useState('')
   const [loading,setLoading]=useState(false)
@@ -1064,6 +1064,7 @@ function Chat() {
   const [sessions,setSessions]=useState([])
   const [showSessions,setShowSessions]=useState(false)
   const [currentSessionId,setCurrentSessionId]=useState(null)
+  const currentSessionIdRef=useRef(null)  // ref for stale-closure-safe auto-save
   const [sessionSaving,setSessionSaving]=useState(false)
   const sessionsRef=useRef(null)
 
@@ -1086,14 +1087,15 @@ function Chat() {
     if(msgs.filter(m=>m.role==='user').length===0) return
     setSessionSaving(true)
     try{
+      const sid=currentSessionIdRef.current||undefined
       const d=await fetch('/chat/sessions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-        id:currentSessionId||undefined,
+        id:sid,
         title:'New Chat',
         model,
         messages:JSON.stringify(msgs.filter(m=>m.role==='user'||m.role==='assistant').map(m=>({role:m.role,content:m.content,model:m.model,stats:m.stats}))),
         tokenCount:msgs.reduce((s,m)=>s+(m.stats?.tokens||0),0)
       })}).then(r=>r.json())
-      if(d?.id){ setCurrentSessionId(d.id); await loadSessions() }
+      if(d?.id){ currentSessionIdRef.current=d.id; setCurrentSessionId(d.id); await loadSessions() }
     } catch{}
     setSessionSaving(false)
   }
@@ -1102,16 +1104,21 @@ function Chat() {
     const d=await apiFetch(`/chat/sessions/${sid}`).catch(()=>null)
     if(!d) return
     const msgs2=Array.isArray(d.messages)?d.messages:JSON.parse(d.messages||'[]')
-    setMsgs(msgs2); setCurrentSessionId(sid)
+    setMsgs(msgs2); currentSessionIdRef.current=sid; setCurrentSessionId(sid)
     if(d.model) setModel(d.model)
     setShowSessions(false)
   }
+
+  // Resume session when triggered from SessionsPanel
+  useEffect(()=>{
+    if(sessionToLoad?.id){ loadSession(sessionToLoad.id); onSessionLoaded?.() }
+  },[sessionToLoad])
 
   const deleteSession=async(e,sid)=>{
     e.stopPropagation()
     await fetch(`/chat/sessions/${sid}`,{method:'DELETE'}).catch(()=>{})
     setSessions(ss=>ss.filter(s=>s.id!==sid))
-    if(currentSessionId===sid) setCurrentSessionId(null)
+    if(currentSessionId===sid){ currentSessionIdRef.current=null; setCurrentSessionId(null) }
   }
 
   // Models that generate images instead of text
@@ -1300,6 +1307,8 @@ function Chat() {
               finalDone=d
               const stats=d.tokens>0?{tokens:d.tokens,promptTokens:d.promptTokens,tokPerSec:d.tokPerSec,durationMs:d.durationMs||(Date.now()-sendStart)}:null
               setMsgs(m=>m.map(x=>x.id===streamId?{...x,streaming:false,stats}:x))
+              // Auto-save session after every completed response
+              setTimeout(()=>saveSession(),600)
               // Context usage warning \u2014 >70% of model ctx used
               const meta=MODEL_META[model]
               const maxCtx=meta?.ctx?parseInt(meta.ctx)*1000:16000
@@ -1608,7 +1617,7 @@ function Chat() {
             style={{background:agentMode?'rgba(16,185,129,0.12)':'rgba(255,255,255,0.03)',color:agentMode?'#34d399':'#71717a',border:`1px solid ${agentMode?'rgba(16,185,129,0.25)':'rgba(255,255,255,0.08)'}`}}>
             {agentMode?'\ud83e\udd16 Agent ON':'\ud83e\udd16 Agent OFF'}
           </button>
-          <button onMouseDown={e=>e.preventDefault()} onClick={()=>{ setMsgs([{role:'assistant',content:"Fresh start! What do you want to build or ask?"}]); setBuildBanner(null); setCtxWarning(false); setCurrentSessionId(null); inputRef.current?.focus() }}
+          <button onMouseDown={e=>e.preventDefault()} onClick={()=>{ setMsgs([{role:'assistant',content:"Fresh start! What do you want to build or ask?"}]); setBuildBanner(null); setCtxWarning(false); currentSessionIdRef.current=null; setCurrentSessionId(null); inputRef.current?.focus() }}
             className="px-2.5 py-1.5 rounded-xl text-[11px] text-zinc-500 border border-white/[0.06] hover:text-zinc-300 transition-all">
             Clear
           </button>
@@ -1631,7 +1640,7 @@ function Chat() {
                 style={{background:'rgba(9,9,11,0.98)',border:'1px solid rgba(255,255,255,0.1)',backdropFilter:'blur(20px)'}}>
                 <div className="px-4 py-3 border-b flex items-center justify-between" style={{borderColor:'rgba(255,255,255,0.07)'}}>
                   <span className="text-xs font-semibold text-zinc-300">Chat History</span>
-                  <button onClick={()=>{ setMsgs([{role:'assistant',content:"Fresh start! What do you want to build or ask?"}]); setCurrentSessionId(null); setShowSessions(false) }}
+                  <button onClick={()=>{ setMsgs([{role:'assistant',content:"Fresh start! What do you want to build or ask?"}]); currentSessionIdRef.current=null; setCurrentSessionId(null); setShowSessions(false) }}
                     className="text-[10px] text-zinc-600 hover:text-zinc-400 flex items-center gap-1">
                     <Plus size={9}/> New
                   </button>
@@ -3203,6 +3212,7 @@ export default function App() {
   const [projects,setProjects]=useState([])
   const [mobile,setMobile]=useState(false)
   const [running,setRunning]=useState(false)
+  const [sessionToLoad,setSessionToLoad]=useState(null) // session resume across panels
   const loadP=useCallback(async()=>{ const d=await apiFetch('/projects'); if(Array.isArray(d)) setProjects(d) },[])
   useEffect(()=>{ loadP(); const iv=setInterval(loadP,8000); return()=>clearInterval(iv) },[loadP])
   useEffect(()=>{
@@ -3231,8 +3241,8 @@ export default function App() {
           <main className="forge-main">
             {tab==='overview' &&<Overview projects={projects} onRun={runProject}/>}
             {tab==='pipeline' &&<Pipeline projects={projects}/>}
-            {tab==='chat'     &&<Chat onSwitchToSessions={()=>setTab('sessions')}/>}
-            {tab==='sessions' &&<SessionsPanel onOpenChat={(s)=>{ setTab('chat') }}/>}
+            {tab==='chat'     &&<Chat onSwitchToSessions={()=>setTab('sessions')} sessionToLoad={sessionToLoad} onSessionLoaded={()=>setSessionToLoad(null)}/>}
+            {tab==='sessions' &&<SessionsPanel onOpenChat={(s)=>{ setSessionToLoad(s); setTab('chat') }}/>}
             {tab==='models'   &&<Models/>}
             {tab==='settings' &&<Settings/>}
           </main>

@@ -2623,8 +2623,12 @@ app.get('/chat/sessions', async (req, res) => {
   try {
     const db = DB();
     try {
-      const rows = db.prepare('SELECT id, title, model, token_count, created_at, updated_at FROM chat_sessions ORDER BY updated_at DESC').all();
-      res.json(rows);
+      const rows = db.prepare('SELECT id, title, model, token_count, created_at, updated_at, messages FROM chat_sessions ORDER BY updated_at DESC').all();
+      res.json(rows.map(r => {
+        let mc = 0;
+        try { mc = JSON.parse(r.messages||'[]').filter(m=>m.role==='user').length } catch {}
+        return { id: r.id, title: r.title, model: r.model, token_count: r.token_count, created_at: r.created_at, updated_at: r.updated_at, message_count: mc };
+      }));
     } finally { db.close(); }
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
