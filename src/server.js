@@ -2725,8 +2725,8 @@ app.post('/chat', rateLimit(20), async (req, res) => {
     if (intent === 'NEW_PROJECT' || !activeProject) {
       // Extract project metadata from message
       const metaRes = await generate(
-        `From this request: "${message.slice(0, 400)}"\nExtract JSON: {"name":"short-kebab-name","description":"one sentence what it does","stack":"node or python"}\nJSON only:`,
-        { system: 'Extract project metadata as JSON. Use node for JavaScript/web/API projects, python for data/ML/scripts.' }
+        `Extract project details from this request and return ONLY a JSON object.\nRequest: "${message.slice(0, 400)}"\nReturn JSON with these exact keys filled in with real values from the request:\n{"name":"<kebab-case-project-name>","description":"<what this project actually does>","stack":"node"}\nstack must be: node, python, react, or go. Output ONLY the JSON object, no other text.`,
+        { system: 'You are a JSON extractor. Return only valid JSON with real values from the user request. Never use placeholder text.' }
       );
       let meta = { name: 'my-project', description: message.slice(0, 100), stack: 'node' };
       try {
@@ -4904,9 +4904,20 @@ app.post('/project/plan-from-chat', async (req, res) => {
 
 ${convoText}
 
-Extract the project details and return ONLY a JSON object. No markdown, no explanation.
+Extract the project details and return ONLY a valid JSON object with REAL values from the conversation (never copy placeholder text).
 
-{"name":"short project name","description":"one sentence what it does","stack":"${stack||'node'}","features":["feature1","feature2","feature3","feature4","feature5"],"epics":[{"title":"epic title","tasks":["task1","task2","task3"]},{"title":"epic title","tasks":["task1","task2","task3"]},{"title":"epic title","tasks":["task1","task2"]}]}
+The JSON must have this exact structure:
+{
+  "name": "kebab-case-name-of-actual-project",
+  "description": "what this specific project actually does",
+  "stack": "${stack||'node'}",
+  "features": ["real feature 1", "real feature 2", "real feature 3", "real feature 4", "real feature 5"],
+  "epics": [
+    {"title": "real epic title 1", "tasks": ["real task 1", "real task 2", "real task 3"]},
+    {"title": "real epic title 2", "tasks": ["real task 1", "real task 2", "real task 3"]},
+    {"title": "real epic title 3", "tasks": ["real task 1", "real task 2"]}
+  ]
+}
 
 Rules: stack must be node/react/python/go. 3 epics. 3-4 tasks each. Output ONLY the JSON object starting with {`;
 
@@ -4934,6 +4945,22 @@ Rules: stack must be node/react/python/go. 3 epics. 3-4 tasks each. Output ONLY 
           { title: 'Polish & Deploy', tasks: ['Write tests','Add documentation','Deployment setup'] }
         ]
       };
+    }
+
+    // Reject placeholder/template values — model copied the example instead of filling it in
+    const PLACEHOLDERS = ['short project name','one sentence','epic title','task1','task2','task3','feature1','kebab-case-name'];
+    const isPlaceholder = v => PLACEHOLDERS.some(p => String(v||'').toLowerCase().includes(p));
+    if (isPlaceholder(result.name) || isPlaceholder(result.description)) {
+      const words = conversation.filter(m=>m.role==='user').map(m=>m.content).join(' ');
+      result.name = words.slice(0,60).replace(/[^a-z0-9\s]/gi,'').trim().replace(/\s+/g,'-').toLowerCase().slice(0,40) || 'my-project';
+      result.description = words.slice(0,150);
+    }
+    if (result.epics?.every(e => isPlaceholder(e.title))) {
+      result.epics = [
+        { title: 'Core Implementation', tasks: ['Set up project structure','Implement core logic','Add error handling'] },
+        { title: 'Interface & API', tasks: ['Build user interface','Create API endpoints','Add data layer'] },
+        { title: 'Polish & Deploy', tasks: ['Write tests','Add documentation','Deployment config'] }
+      ];
     }
 
     result.epics = result.epics.map(e => ({
