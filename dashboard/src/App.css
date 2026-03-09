@@ -1,0 +1,113 @@
+.forge-root {
+  position: relative;
+  min-height: 100vh;
+  background: #080810;
+  overflow-x: hidden;
+}
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.forge-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.forge-bg canvas {
+  width: 100%;
+  height: 100%;
+}
+.forge-shell {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-height: 100vh;
+}
+.forge-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: rgba(8,8,16,0.8);
+  backdrop-filter: blur(24px);
+  border-right: 1px solid rgba(255,255,255,0.05);
+  min-height: 100vh;
+  position: sticky;
+  top: 0;
+}
+.forge-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.forge-main {
+  flex: 1;
+  padding: 1.75rem;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+}
+.forge-card {
+  background: rgba(255,255,255,0.025);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.06);
+  padding: 1.25rem;
+  border-radius: 1rem;
+  transition: border-color 0.2s ease;
+}
+.forge-pcard {
+  background: rgba(12,12,20,0.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.06);
+  padding: 1.125rem;
+  border-radius: 0.875rem;
+  transition: border-color 0.2s ease;
+}
+.forge-pcard:hover {
+  border-color: rgba(139,92,246,0.2);
+}
+.forge-stat-card {
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.06);
+  padding: 1rem;
+  border-radius: 0.875rem;
+  transition: border-color 0.2s ease;
+}
+.forge-stat-card:hover {
+  border-color: rgba(139,92,246,0.2);
+}
+.forge-kanban-col {
+  background: rgba(255,255,255,0.018);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 0.875rem;
+  padding: 0.875rem;
+}
+.forge-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(124,58,237,0.25) transparent;
+}
+.forge-scroll::-webkit-scrollbar {
+  width: 3px;
+}
+.forge-scroll::-webkit-scrollbar-thumb {
+  background: rgba(124,58,237,0.25);
+  border-radius: 2px;
+}
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.counter-number {
+  display: inline-block;
+  line-height: 1;
+}

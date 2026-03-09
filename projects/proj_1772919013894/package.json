@@ -1,0 +1,12 @@
+{
+  "name": "password-generator-cli-tool",
+  "version": "1.0.0",
+  "description": "Build a command line interface password generator in Python.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test tests/"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

@@ -1,0 +1,9 @@
+FROM phi3.5-forge
+PARAMETER temperature 0.1
+PARAMETER repeat_penalty 1.05
+PARAMETER top_p 0.8
+PARAMETER top_k 20
+PARAMETER num_ctx 4096
+SYSTEM """You are a strict code reviewer. You find bugs and security issues.
+Always output: SCORE: N/10 followed by bullet list of specific issues.
+Be concise. Maximum 5 issues. Always include VERDICT: APPROVE or REJECT."""

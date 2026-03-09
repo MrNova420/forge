@@ -1,0 +1,135 @@
+{
+  "name": "Forge AI Dev Team Integration",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "forge",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-in",
+      "name": "Forge Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            { "value1": "={{$json.event}}", "operation": "equals", "value2": "task_done" },
+            { "value1": "={{$json.event}}", "operation": "equals", "value2": "epic_complete" },
+            { "value1": "={{$json.event}}", "operation": "equals", "value2": "project_complete" }
+          ]
+        }
+      },
+      "id": "event-router",
+      "name": "Route by Event",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [{ "value1": "={{$json.data.score}}", "operation": "smallerEqual", "value2": 6 }]
+        }
+      },
+      "id": "quality-check",
+      "name": "Low Quality Check",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [680, 200]
+    },
+    {
+      "parameters": {
+        "url": "=http://localhost:3737/project/{{$json.data.projectId}}/retry-low-quality",
+        "method": "POST",
+        "jsonParameters": true,
+        "bodyParametersJson": "{\"minScore\": 7}",
+        "options": {}
+      },
+      "id": "trigger-retry",
+      "name": "Trigger Retry",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [900, 160]
+    },
+    {
+      "parameters": {
+        "url": "=http://localhost:3737/project/{{$json.data.projectId}}/security-audit",
+        "method": "POST",
+        "options": {}
+      },
+      "id": "security-audit",
+      "name": "Security Audit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [900, 320]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:3737/metrics",
+        "options": {}
+      },
+      "id": "get-metrics",
+      "name": "Get Metrics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [680, 460]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"received\": true, \"event\": \"{{$node[\"Forge Webhook\"].json.event}}\"}",
+        "options": {}
+      },
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [460, 500]
+    },
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "hours", "hoursInterval": 24 }] }
+      },
+      "id": "daily-trigger",
+      "name": "Daily Report Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [240, 600]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:3737/stats",
+        "options": {}
+      },
+      "id": "daily-stats",
+      "name": "Get Daily Stats",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [460, 600]
+    }
+  ],
+  "connections": {
+    "Forge Webhook": { "main": [[{ "node": "Route by Event", "type": "main", "index": 0 }, { "node": "Webhook Response", "type": "main", "index": 0 }]] },
+    "Route by Event": {
+      "main": [
+        [{ "node": "Low Quality Check", "type": "main", "index": 0 }],
+        [{ "node": "Security Audit", "type": "main", "index": 0 }],
+        [{ "node": "Get Metrics", "type": "main", "index": 0 }]
+      ]
+    },
+    "Low Quality Check": {
+      "main": [
+        [{ "node": "Trigger Retry", "type": "main", "index": 0 }],
+        [{ "node": "Security Audit", "type": "main", "index": 0 }]
+      ]
+    },
+    "Daily Report Trigger": { "main": [[{ "node": "Get Daily Stats", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}

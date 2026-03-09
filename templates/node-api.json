@@ -1,0 +1,6 @@
+{
+  "name": "Node.js REST API",
+  "stack": "node",
+  "description": "Production-ready REST API with Express, middleware, validation, and tests",
+  "epics": ["Core API setup", "Data models & database", "Authentication & auth middleware", "API endpoints & controllers", "Tests & documentation"]
+}

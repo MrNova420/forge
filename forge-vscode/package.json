@@ -1,0 +1,52 @@
+{
+  "name": "forge-ai",
+  "displayName": "Forge AI",
+  "description": "Local AI development team — Copilot-style completions, chat, and code actions powered by phi3.5-forge",
+  "version": "1.0.0",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["AI", "Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "forge.explain", "title": "Forge: Explain Code" },
+      { "command": "forge.fix", "title": "Forge: Fix Code" },
+      { "command": "forge.test", "title": "Forge: Generate Tests" },
+      { "command": "forge.refactor", "title": "Forge: Refactor Code" },
+      { "command": "forge.chat", "title": "Forge: Open Chat" },
+      { "command": "forge.runTask", "title": "Forge: Run Next Task" },
+      { "command": "forge.indexWorkspace", "title": "Forge: Index Workspace" }
+    ],
+    "menus": {
+      "editor/context": [
+        { "command": "forge.explain", "when": "editorHasSelection", "group": "forge@1" },
+        { "command": "forge.fix", "when": "editorHasSelection", "group": "forge@2" },
+        { "command": "forge.test", "when": "editorHasSelection", "group": "forge@3" },
+        { "command": "forge.refactor", "when": "editorHasSelection", "group": "forge@4" }
+      ]
+    },
+    "configuration": {
+      "title": "Forge AI",
+      "properties": {
+        "forge.apiUrl": { "type": "string", "default": "http://localhost:3737", "description": "Forge API URL" },
+        "forge.enableInlineCompletions": { "type": "boolean", "default": true, "description": "Enable inline code completions" },
+        "forge.completionDelay": { "type": "number", "default": 600, "description": "Debounce delay for completions (ms)" },
+        "forge.model": { "type": "string", "default": "phi3.5-forge", "description": "Ollama model to use" }
+      }
+    },
+    "keybindings": [
+      { "command": "forge.chat", "key": "ctrl+shift+f", "mac": "cmd+shift+f" },
+      { "command": "forge.fix", "key": "ctrl+shift+.", "when": "editorHasSelection" }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  }
+}

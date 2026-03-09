@@ -1,0 +1,6 @@
+{
+  "name": "Web Application",
+  "stack": "web",
+  "description": "Modern web app with HTML/CSS/JS, API integration, and responsive design",
+  "epics": ["HTML structure & layout", "CSS styling & animations", "JavaScript functionality", "API integration", "Responsive & accessible design"]
+}

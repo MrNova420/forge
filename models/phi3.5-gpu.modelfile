@@ -1,0 +1,11 @@
+FROM phi3.5:latest
+
+# Force ALL layers onto GPU (GTX 1650 SUPER, 4GB VRAM)
+# phi3.5 is ~2.2GB so all 32 layers fit with room to spare
+PARAMETER num_gpu 99
+PARAMETER num_ctx 4096
+PARAMETER num_thread 4
+
+# Quality defaults
+PARAMETER temperature 0.2
+PARAMETER repeat_penalty 1.1

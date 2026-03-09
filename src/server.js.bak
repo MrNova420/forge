@@ -1,0 +1,182 @@
+// Forge API Server — n8n calls this, keeps all AI logic here not in n8n nodes
+const express = require('express');
+const { Agent } = require('./agent');
+const { multipass } = require('./multipass');
+const { generate } = require('./ollama');
+const Database = require('better-sqlite3');
+const { execSync } = require('child_process');
+const path = require('path');
+
+const app = express();
+app.use(express.json());
+
+const DB = () => new Database(path.join(__dirname, '../db/project.db'));
+const MEM = () => new Database(path.join(__dirname, '../db/agent_memory.db'));
+
+// ── System Prompts ──────────────────────────────────────────────────────────
+const PROMPTS = {
+  architect: `You are a principal software architect with 15 years experience.
+You design clean, scalable systems. You break projects into clear epics and tasks.
+You think about edge cases, security, and maintainability from the start.
+Always output structured, actionable specs. Never handwave — be specific.`,
+
+  coder: `You are a staff software engineer who writes production-quality code.
+Your code is clean, well-named, handles errors, and follows best practices.
+You write code that works on the first try. You add comments only where needed.
+Never write placeholder code — always write the real implementation.`,
+
+  reviewer: `You are a grumpy senior engineer who has seen every possible bug.
+You review code with extreme scrutiny. Check for: correctness, security vulnerabilities,
+edge cases, error handling, performance issues, and spec compliance.
+Score 1-10. Only 8+ for genuinely excellent code. Be specific about every issue.`,
+
+  tester: `You are a QA engineer obsessed with breaking things.
+You write comprehensive tests: happy path, edge cases, error cases, boundary conditions.
+Your tests actually run and catch real bugs. You think like an attacker trying to break the code.`,
+
+  debugger: `You are an expert debugger who traces root causes, never guesses.
+You read error messages carefully, trace the call stack, identify the exact line causing failure.
+You make minimal targeted fixes that solve the root cause without breaking other things.`,
+
+  orchestrator: `You are a senior engineering manager who coordinates a dev team.
+You break down work, assign priorities, detect blockers, and keep the project moving.
+You make decisions quickly and clearly. You summarize status concisely.`
+};
+
+// ── Health ──────────────────────────────────────────────────────────────────
+app.get('/health', (req, res) => res.json({ status: 'ok', model: 'phi3.5-forge' }));
+
+// ── Project: Create ─────────────────────────────────────────────────────────
+app.post('/project/create', async (req, res) => {
+  try {
+    const { name, description } = req.body;
+    if (!name || !description) return res.status(400).json({ error: 'name and description required' });
+
+    const id = `proj_${Date.now()}`;
+    const db = DB();
+    db.prepare('INSERT INTO projects (id, name, description) VALUES (?,?,?)').run(id, name, description);
+
+    // Architect agent breaks it into epics + tasks
+    const agent = new Agent('architect', PROMPTS.architect);
+    const result = await agent.run(
+      `Break this project into 3-5 epics and 3-5 tasks per epic. Project: "${name}"\n\n${description}\n\nOutput JSON: {"epics":[{"id":"e1","title":"...","tasks":[{"id":"t1","title":"...","description":"..."}]}]}`,
+      { useMultipass: true, minScore: 7, rounds: 2 }
+    );
+    agent.close();
+
+    // Parse and store epics/tasks
+    try {
+      const match = result.output.match(/\{[\s\S]*\}/);
+      if (match) {
+        const plan = JSON.parse(match[0]);
+        for (const epic of (plan.epics || [])) {
+          const epicId = `${id}_${epic.id}`;
+          db.prepare('INSERT INTO epics (id, project_id, title) VALUES (?,?,?)').run(epicId, id, epic.title);
+          for (const task of (epic.tasks || [])) {
+            db.prepare('INSERT INTO tasks (id, epic_id, title, description) VALUES (?,?,?,?)').run(
+              `${epicId}_${task.id}`, epicId, task.title, task.description || ''
+            );
+          }
+        }
+      }
+    } catch (e) { console.error('Plan parse error:', e.message); }
+
+    db.close();
+    res.json({ success: true, projectId: id, plan: result.output, score: result.score });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Dev Loop: Run next task ──────────────────────────────────────────────────
+app.post('/task/run-next', async (req, res) => {
+  const db = DB();
+  try {
+    const task = db.prepare(`SELECT t.*, e.title as epic_title FROM tasks t
+      JOIN epics e ON t.epic_id = e.id WHERE t.status='pending' AND t.attempts < 3
+      ORDER BY t.created_at LIMIT 1`).get();
+
+    if (!task) return res.json({ message: 'No pending tasks' });
+
+    db.prepare('UPDATE tasks SET status=?,assigned_agent=?,attempts=attempts+1,updated_at=CURRENT_TIMESTAMP WHERE id=?')
+      .run('in_progress', 'coder', task.id);
+
+    // Coder generates code
+    const coder = new Agent('coder', PROMPTS.coder);
+    const coded = await coder.run(
+      `Epic: ${task.epic_title}\nTask: ${task.title}\n\n${task.description}\n\nWrite complete, working code:`,
+      { useMultipass: true, minScore: 7, rounds: 3, taskId: task.id }
+    );
+    coder.close();
+
+    // Reviewer checks it
+    const reviewer = new Agent('reviewer', PROMPTS.reviewer);
+    const reviewed = await reviewer.run(
+      `Review this code for the task: "${task.title}"\n\n${coded.output}`,
+      { useMultipass: false, taskId: task.id }
+    );
+    reviewer.close();
+
+    const finalScore = coded.score;
+    const status = finalScore >= 6 ? 'done' : 'pending';
+    db.prepare('UPDATE tasks SET status=?,result=?,quality_score=?,updated_at=CURRENT_TIMESTAMP WHERE id=?')
+      .run(status, coded.output, finalScore, task.id);
+    db.close();
+
+    res.json({ taskId: task.id, title: task.title, status, score: finalScore, review: reviewed.output });
+  } catch (e) {
+    db.close();
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Self-Fix: Fix errors ─────────────────────────────────────────────────────
+app.post('/fix/error', async (req, res) => {
+  try {
+    const { errorLog, filePath, code } = req.body;
+    if (!errorLog) return res.status(400).json({ error: 'errorLog required' });
+
+    const agent = new Agent('debugger', PROMPTS.debugger);
+    const result = await agent.run(
+      `Error occurred:\n${errorLog}\n\n${filePath ? `File: ${filePath}\n\nCode:\n${code || ''}` : ''}\n\nDiagnose root cause and provide the exact fix:`,
+      { useMultipass: true, minScore: 7, rounds: 2 }
+    );
+    agent.close();
+    res.json({ fix: result.output, score: result.score });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Agent: Direct call ───────────────────────────────────────────────────────
+app.post('/agent/:role', async (req, res) => {
+  try {
+    const { role } = req.params;
+    const { task, useMultipass = true, minScore = 7 } = req.body;
+    if (!task) return res.status(400).json({ error: 'task required' });
+    if (!PROMPTS[role]) return res.status(404).json({ error: `Unknown agent role: ${role}` });
+
+    const agent = new Agent(role, PROMPTS[role]);
+    const result = await agent.run(task, { useMultipass, minScore });
+    agent.close();
+    res.json({ output: result.output, score: result.score, rounds: result.rounds });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Stats ────────────────────────────────────────────────────────────────────
+app.get('/stats', (req, res) => {
+  const proj = DB();
+  const mem = MEM();
+  const stats = {
+    projects: proj.prepare('SELECT COUNT(*) as n FROM projects').get().n,
+    tasks: { total: 0, done: 0, pending: 0, in_progress: 0 },
+    avgQualityScore: null,
+    totalReflections: 0
+  };
+  const tasks = proj.prepare('SELECT status, COUNT(*) as n FROM tasks GROUP BY status').all();
+  tasks.forEach(r => { stats.tasks[r.status] = r.n; stats.tasks.total += r.n; });
+  const score = proj.prepare('SELECT AVG(quality_score) as avg FROM tasks WHERE quality_score IS NOT NULL').get();
+  stats.avgQualityScore = score?.avg?.toFixed(2) || 'N/A';
+  stats.totalReflections = mem.prepare('SELECT COUNT(*) as n FROM reflection_scores').get().n;
+  proj.close(); mem.close();
+  res.json(stats);
+});
+
+const PORT = process.env.FORGE_PORT || 3737;
+app.listen(PORT, () => console.log(`🔨 Forge API running on http://localhost:${PORT}`));

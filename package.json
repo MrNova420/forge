@@ -1,0 +1,25 @@
+{
+  "name": "forge",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "better-sqlite3": "^12.6.2",
+    "chokidar": "^5.0.0",
+    "chroma-js": "^3.2.0",
+    "express": "^5.2.1",
+    "glob": "^13.0.6",
+    "jsonrepair": "^3.13.2",
+    "node-fetch": "^2.7.0",
+    "vectra": "^0.12.3"
+  },
+  "devDependencies": {
+    "eslint": "^10.0.3"
+  }
+}

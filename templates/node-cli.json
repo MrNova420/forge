@@ -1,0 +1,6 @@
+{
+  "name": "Node.js CLI Tool",
+  "stack": "node", 
+  "description": "Feature-rich command-line tool with argument parsing, colored output, and config file support",
+  "epics": ["CLI framework & commands", "Business logic & processing", "Config & persistence", "Help system & error handling", "Tests & packaging"]
+}

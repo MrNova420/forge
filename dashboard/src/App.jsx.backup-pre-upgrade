@@ -1,0 +1,557 @@
+import { useState, useEffect, useRef, useCallback } from 'react'
+import Aurora from './components/Aurora/Aurora'
+import SpotlightCard from './components/SpotlightCard/SpotlightCard'
+import GradientText from './components/GradientText/GradientText'
+import ShinyText from './components/ShinyText/ShinyText'
+import BlurText from './components/BlurText/BlurText'
+import CountUp from './components/CountUp/CountUp'
+import AnimatedContent from './components/AnimatedContent/AnimatedContent'
+import './App.css'
+
+const API = ''
+async function apiFetch(path) {
+  try { const r = await fetch(API + path); if (!r.ok) return null; return r.json() }
+  catch { return null }
+}
+
+function Badge({ status }) {
+  const m = {
+    done:'bg-emerald-500/15 text-emerald-300 border-emerald-500/25',
+    completed:'bg-emerald-500/15 text-emerald-300 border-emerald-500/25',
+    in_progress:'bg-blue-500/15 text-blue-300 border-blue-500/25',
+    running:'bg-blue-500/15 text-blue-300 border-blue-500/25',
+    pending:'bg-zinc-700/40 text-zinc-400 border-zinc-600/30',
+    failed:'bg-red-500/15 text-red-300 border-red-500/25',
+    active:'bg-violet-500/15 text-violet-300 border-violet-500/25',
+  }
+  const pulse = (status==='in_progress'||status==='running') ? ' animate-pulse' : ''
+  return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${m[status]||m.pending}${pulse}`}>{status?.replace('_',' ')}</span>
+}
+
+function Ring({ pct, size=44, stroke=3, color='#7c3aed' }) {
+  const r=(size-stroke*2)/2, circ=2*Math.PI*r, dash=circ*(pct/100)
+  return (
+    <svg width={size} height={size} style={{transform:'rotate(-90deg)'}}>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={stroke}/>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke}
+        strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
+        style={{transition:'stroke-dasharray 0.8s cubic-bezier(0.4,0,0.2,1)'}}/>
+    </svg>
+  )
+}
+
+function Bar({ val, max, color='#7c3aed' }) {
+  const pct = max>0 ? Math.min(100,(val/max)*100) : 0
+  return (
+    <div className="w-full h-1.5 rounded-full overflow-hidden" style={{background:'rgba(255,255,255,0.05)'}}>
+      <div className="h-full rounded-full" style={{width:`${pct}%`,background:`linear-gradient(90deg,${color}99,${color})`,transition:'width 0.7s ease'}}/>
+    </div>
+  )
+}
+
+const NAV = [
+  {id:'overview',icon:'⬡',label:'Overview'},
+  {id:'pipeline',icon:'⟳',label:'Pipeline'},
+  {id:'chat',    icon:'◉',label:'Chat'},
+  {id:'models',  icon:'◎',label:'Models'},
+  {id:'settings',icon:'⚙',label:'Settings'},
+]
+
+function Sidebar({ tab, setTab, projects }) {
+  const done=projects.reduce((a,p)=>a+(p.task_done||0),0)
+  const total=projects.reduce((a,p)=>a+(p.task_total||0),0)
+  return (
+    <aside className="forge-sidebar">
+      <div className="px-4 pt-5 pb-5">
+        <div className="flex items-center gap-2.5">
+          <div style={{width:28,height:28,borderRadius:8,background:'linear-gradient(135deg,#7c3aed,#4f46e5)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:700,color:'white',boxShadow:'0 4px 12px rgba(124,58,237,0.3)'}}>F</div>
+          <GradientText colors={['#a78bfa','#c4b5fd','#7c3aed','#a78bfa']} animationSpeed={8} className="text-base font-bold tracking-tight">The Forge</GradientText>
+        </div>
+        <ShinyText text="Local AI Dev Team" speed={4} color="#52525b" shineColor="#71717a" className="text-[11px] mt-1 ml-0.5"/>
+      </div>
+      <nav className="px-2 space-y-0.5 flex-1">
+        {NAV.map(n=>(
+          <button key={n.id} onClick={()=>setTab(n.id)}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 ${
+              tab===n.id ? 'bg-violet-500/15 text-violet-200' : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/5'
+            }`}
+            style={tab===n.id ? {boxShadow:'inset 0 0 0 1px rgba(139,92,246,0.2)'} : {}}>
+            <span className="text-base leading-none">{n.icon}</span>{n.label}
+          </button>
+        ))}
+      </nav>
+      <div className="px-4 pb-5 mt-auto">
+        <div className="p-3 rounded-xl" style={{background:'rgba(255,255,255,0.025)',border:'1px solid rgba(255,255,255,0.06)'}}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] text-zinc-500 font-medium">Overall Progress</span>
+            <span className="text-[11px] font-semibold text-violet-400">{total>0?Math.round((done/total)*100):0}%</span>
+          </div>
+          <Bar val={done} max={total}/>
+          <p className="text-[10px] text-zinc-600 mt-1.5">{done}/{total} tasks complete</p>
+        </div>
+      </div>
+    </aside>
+  )
+}
+
+const PROJ_COLORS=['#7c3aed','#0891b2','#059669','#d97706','#dc2626','#db2777','#2563eb']
+
+function Overview({ projects, onRun }) {
+  const done=projects.reduce((a,p)=>a+(p.task_done||0),0)
+  const total=projects.reduce((a,p)=>a+(p.task_total||0),0)
+  const active=projects.filter(p=>p.status==='active').length
+  const stats=[
+    {label:'Projects',val:projects.length,color:'#7c3aed',icon:'◈'},
+    {label:'Active',val:active,color:'#0891b2',icon:'◎'},
+    {label:'Complete',val:done,color:'#059669',icon:'✓'},
+    {label:'Total Tasks',val:total,color:'#d97706',icon:'≡'},
+  ]
+  return (
+    <div className="space-y-6">
+      <div>
+        <BlurText text="Command Center" className="text-2xl font-bold text-white" animateBy="words" delay={60}/>
+        <p className="text-sm text-zinc-500 mt-1">Autonomous local AI dev team — all models, all yours</p>
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {stats.map((s,i)=>(
+          <AnimatedContent key={s.label} delay={i*40} distance={20}>
+            <div className="forge-stat-card">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-zinc-500">{s.label}</span>
+                <span style={{color:s.color}}>{s.icon}</span>
+              </div>
+              <p className="text-3xl font-bold tabular-nums" style={{color:s.color}}>
+                <CountUp to={s.val} duration={0.8}/>
+              </p>
+            </div>
+          </AnimatedContent>
+        ))}
+      </div>
+      <div>
+        <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-3">Projects</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          {projects.map((p,i)=>{
+            const d=p.task_done||0, t=p.task_total||0, pct=t>0?Math.round((d/t)*100):0
+            const col=PROJ_COLORS[i%PROJ_COLORS.length]
+            return (
+              <AnimatedContent key={p.id} delay={i*50} distance={30}>
+                <SpotlightCard spotlightColor={`${col}30`} className="forge-pcard group">
+                  <div className="flex items-start gap-3">
+                    <div className="relative flex-shrink-0">
+                      <Ring pct={pct} color={col}/>
+                      <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold" style={{color:col}}>{pct}%</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="text-sm font-semibold text-white leading-snug">{p.name}</h3>
+                        <Badge status={p.status}/>
+                      </div>
+                      <p className="text-[11px] text-zinc-500 mt-0.5">{p.stack}</p>
+                      <p className="text-[11px] text-zinc-600 mt-1 line-clamp-1">{p.description}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full" style={{background:col}}/>
+                      <span className="text-[11px] text-zinc-500">{p.model?.split(':')[0]}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-zinc-500">{d}/{t}</span>
+                      <button onClick={()=>onRun(p.id)}
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all opacity-0 group-hover:opacity-100"
+                        style={{background:'rgba(124,58,237,0.15)',color:'#c4b5fd',border:'1px solid rgba(124,58,237,0.25)'}}>
+                        ▶ Run
+                      </button>
+                    </div>
+                  </div>
+                </SpotlightCard>
+              </AnimatedContent>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Pipeline({ projects }) {
+  const [sel,setSel]=useState('')
+  const [tasks,setTasks]=useState([])
+  const [log,setLog]=useState('')
+  useEffect(()=>{ if(projects.length&&!sel) setSel(projects[0]?.id||'') },[projects])
+  useEffect(()=>{
+    if(!sel) return
+    const load=async()=>{
+      const [t,s]=await Promise.all([apiFetch(`/tasks?projectId=${sel}`),apiFetch('/runner/status')])
+      if(t) setTasks(Array.isArray(t)?t:t.tasks||[])
+      if(s?.recentLog) setLog(s.recentLog)
+    }
+    load(); const iv=setInterval(load,3000); return()=>clearInterval(iv)
+  },[sel])
+  const cols=[
+    {key:'pending',label:'Queued',dot:'bg-zinc-500'},
+    {key:'in_progress',label:'Running',dot:'bg-blue-400 animate-pulse'},
+    {key:'done',label:'Complete',dot:'bg-emerald-400'},
+    {key:'failed',label:'Failed',dot:'bg-red-400'},
+  ]
+  return (
+    <div className="space-y-5">
+      <div>
+        <BlurText text="Pipeline Monitor" className="text-2xl font-bold text-white" animateBy="words" delay={60}/>
+        <p className="text-sm text-zinc-500 mt-1">Real-time task execution across all agents</p>
+      </div>
+      <div className="flex gap-2 flex-wrap">
+        {projects.map(p=>(
+          <button key={p.id} onClick={()=>setSel(p.id)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+              sel===p.id ? 'bg-violet-500/15 text-violet-200 border-violet-500/25' : 'text-zinc-500 border-white/[0.06] bg-white/[0.02] hover:text-zinc-300'
+            }`}>
+            {p.name} <span className="text-zinc-600 ml-1">{p.task_done||0}/{p.task_total||0}</span>
+          </button>
+        ))}
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {cols.map(col=>{
+          const items=tasks.filter(t=>t.status===col.key)
+          return (
+            <div key={col.key} className="forge-kanban-col">
+              <div className="flex items-center gap-2 mb-3">
+                <div className={`w-1.5 h-1.5 rounded-full ${col.dot}`}/>
+                <span className="text-xs font-semibold text-zinc-400">{col.label}</span>
+                <span className="ml-auto text-xs text-zinc-600">{items.length}</span>
+              </div>
+              <div className="space-y-2 max-h-80 overflow-y-auto forge-scroll">
+                {items.map(t=>(
+                  <div key={t.id} className="p-2.5 rounded-lg transition-all" style={{background:'rgba(255,255,255,0.025)',border:'1px solid rgba(255,255,255,0.05)'}}>
+                    <p className="text-[11px] font-medium text-zinc-300 leading-snug line-clamp-2">{t.title}</p>
+                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                      {t.quality_score!=null && <span className="text-[10px] font-semibold" style={{color:t.quality_score>=8?'#10b981':t.quality_score>=6?'#d97706':'#ef4444'}}>{t.quality_score}/10</span>}
+                      {t.tok_per_sec!=null && <span className="text-[10px] text-zinc-600">{t.tok_per_sec.toFixed(0)}t/s</span>}
+                      {t.duration_ms!=null && <span className="text-[10px] text-zinc-600 ml-auto">{(t.duration_ms/1000).toFixed(1)}s</span>}
+                    </div>
+                  </div>
+                ))}
+                {!items.length && <p className="text-[11px] text-zinc-700 text-center py-6">Empty</p>}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      {log && (
+        <div className="forge-card">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"/>
+            <span className="text-xs font-semibold text-zinc-400">Runner Log</span>
+          </div>
+          <pre className="text-[11px] text-zinc-500 font-mono leading-relaxed max-h-36 overflow-y-auto forge-scroll">{log.split('\n').slice(-12).join('\n')}</pre>
+        </div>
+      )}
+    </div>
+  )
+}
+
+const QUICK=['Explain my current project','What tasks are done?','Review the latest code','Suggest improvements','What should I build next?']
+
+function Chat() {
+  const [msgs,setMsgs]=useState([{role:'assistant',content:"Hi! I'm Forge — your local AI assistant. Ask me anything about your projects, code, or request pipeline actions."}])
+  const [input,setInput]=useState('')
+  const [loading,setLoading]=useState(false)
+  const [model,setModel]=useState('qwen2.5-coder:3b')
+  const bottomRef=useRef(null)
+  useEffect(()=>{ bottomRef.current?.scrollIntoView({behavior:'smooth'}) },[msgs,loading])
+  const send=async(text)=>{
+    const msg=text||input.trim(); if(!msg||loading) return
+    setInput(''); setMsgs(m=>[...m,{role:'user',content:msg}]); setLoading(true)
+    // streaming placeholder
+    const streamId = Date.now()
+    setMsgs(m=>[...m,{role:'assistant',content:'',streaming:true,id:streamId,model}])
+    try {
+      const r=await fetch('/chat/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg,model})})
+      const reader=r.body.getReader(); const dec=new TextDecoder(); let buf=''
+      while(true){
+        const {done,value}=await reader.read(); if(done) break
+        buf+=dec.decode(value,{stream:true})
+        const lines=buf.split('\n'); buf=lines.pop()
+        for(const line of lines){
+          if(!line.startsWith('data:')) continue
+          try{
+            const d=JSON.parse(line.slice(5).trim())
+            if(d.token) setMsgs(m=>m.map(x=>x.id===streamId?{...x,content:x.content+d.token}:x))
+            if(d.done)  setMsgs(m=>m.map(x=>x.id===streamId?{...x,streaming:false}:x))
+          }catch{}
+        }
+      }
+    } catch { setMsgs(m=>m.map(x=>x.id===streamId?{...x,content:'⚠️ Connection error',streaming:false}:x)) }
+    finally { setLoading(false) }
+  }
+  const MODELS=['qwen2.5-coder:3b','deepseek-r1:1.5b','deepseek-coder:1.3b']
+  return (
+    <div className="flex flex-col" style={{minHeight:'calc(100vh - 8rem)'}}>
+      <div className="flex items-start justify-between mb-4 flex-wrap gap-2">
+        <div>
+          <BlurText text="Chat with Forge" className="text-2xl font-bold text-white" animateBy="words" delay={60}/>
+          <p className="text-sm text-zinc-500 mt-0.5">Powered by your local models — 100% private</p>
+        </div>
+        <div className="flex gap-1.5 flex-wrap">
+          {MODELS.map(m=>(
+            <button key={m} onClick={()=>setModel(m)}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-all ${
+                model===m ? 'bg-violet-500/15 text-violet-300 border-violet-500/25' : 'text-zinc-500 border-white/[0.06] hover:text-zinc-300'
+              }`}>{m.split(':')[0]}</button>
+          ))}
+        </div>
+      </div>
+      <div className="flex gap-2 flex-wrap mb-4">
+        {QUICK.map(q=><button key={q} onClick={()=>send(q)} className="px-3 py-1.5 rounded-lg text-xs text-zinc-400 transition-all" style={{background:'rgba(255,255,255,0.025)',border:'1px solid rgba(255,255,255,0.06)'}}>{q}</button>)}
+      </div>
+      <div className="flex-1 overflow-y-auto forge-scroll space-y-4 mb-4 pr-1" style={{maxHeight:'55vh'}}>
+        {msgs.map((m,i)=>(
+          <div key={i} className={`flex gap-3 ${m.role==='user'?'flex-row-reverse':''}`}>
+            <div className={`w-7 h-7 rounded-lg flex-shrink-0 flex items-center justify-center text-xs font-bold mt-0.5 ${m.role==='user'?'text-violet-300':'text-zinc-400'}`}
+              style={{background:m.role==='user'?'rgba(124,58,237,0.25)':'rgba(255,255,255,0.04)'}}>
+              {m.role==='user'?'U':'F'}
+            </div>
+            <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${m.role==='user'?'rounded-tr-sm':'rounded-tl-sm'}`}
+              style={m.role==='user'
+                ? {background:'rgba(124,58,237,0.15)',color:'white',border:'1px solid rgba(124,58,237,0.2)'}
+                : {background:'rgba(255,255,255,0.04)',color:'#d4d4d8',border:'1px solid rgba(255,255,255,0.07)'}}>
+              <pre className="whitespace-pre-wrap font-sans">{m.content}{m.streaming&&<span className="inline-block w-0.5 h-4 bg-violet-400 ml-0.5 animate-pulse align-text-bottom"/>}</pre>
+              {m.model && !m.streaming && <span className="block text-[10px] text-zinc-600 mt-1.5">{m.model}</span>}
+            </div>
+          </div>
+        ))}
+        {loading && !msgs.find(m=>m.streaming) && (
+          <div className="flex gap-3">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs text-zinc-400" style={{background:'rgba(255,255,255,0.04)'}}>F</div>
+            <div className="rounded-2xl rounded-tl-sm px-4 py-3" style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.07)'}}>
+              <div className="flex gap-1.5 items-center">
+                {[0,150,300].map(d=><div key={d} className="w-1.5 h-1.5 rounded-full bg-violet-400/60 animate-bounce" style={{animationDelay:`${d}ms`}}/>)}
+                <span className="text-xs text-zinc-600 ml-2">Thinking...</span>
+              </div>
+            </div>
+          </div>
+        )}
+        <div ref={bottomRef}/>
+      </div>
+      <div className="relative">
+        <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&!e.shiftKey&&send()}
+          placeholder="Ask anything — code, projects, architecture..."
+          className="w-full rounded-2xl px-5 py-3.5 pr-14 text-sm text-white placeholder-zinc-600 focus:outline-none transition-all"
+          style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)'}}
+          onFocus={e=>{e.target.style.borderColor='rgba(139,92,246,0.4)';e.target.style.background='rgba(124,58,237,0.04)'}}
+          onBlur={e=>{e.target.style.borderColor='rgba(255,255,255,0.08)';e.target.style.background='rgba(255,255,255,0.04)'}}
+        />
+        <button onClick={()=>send()} disabled={loading||!input.trim()}
+          className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-8 rounded-xl flex items-center justify-center text-sm transition-all disabled:opacity-30"
+          style={{background:'rgba(124,58,237,0.3)',color:'#c4b5fd'}}>↑</button>
+      </div>
+    </div>
+  )
+}
+
+const MODEL_META={
+  'qwen2.5-coder:3b':    {tier:'Workhorse',roles:'coder, refactor, tester, ux',color:'#7c3aed',speed:'50 tok/s',ctx:'32k'},
+  'deepseek-r1:1.5b':    {tier:'Planner',  roles:'architect, orchestrator',    color:'#0891b2',speed:'20 tok/s',ctx:'131k'},
+  'deepseek-coder:1.3b': {tier:'Fast',     roles:'docs, simple tasks',         color:'#059669',speed:'60+ tok/s',ctx:'16k'},
+  'deepseek-coder:6.7b': {tier:'Auditor',  roles:'reviewer, debugger, security',color:'#d97706',speed:'10 tok/s',ctx:'16k'},
+}
+const TIER_COLOR={Planner:'#0891b2',Workhorse:'#7c3aed',Auditor:'#d97706',Fast:'#059669'}
+
+function Models() {
+  const [stats,setStats]=useState(null)
+  const [history,setHistory]=useState([])
+  const [vram,setVram]=useState(null)
+  const load=useCallback(async()=>{
+    const [s,h,v]=await Promise.all([apiFetch('/stats/models'),apiFetch('/benchmark/history?limit=30'),apiFetch('/vram/status')])
+    if(s)setStats(s); if(h)setHistory(Array.isArray(h)?h:h.history||[]); if(v)setVram(v)
+  },[])
+  useEffect(()=>{ load(); const iv=setInterval(load,5000); return()=>clearInterval(iv) },[load])
+  return (
+    <div className="space-y-6">
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <BlurText text="Model Analytics" className="text-2xl font-bold text-white" animateBy="words" delay={60}/>
+          <p className="text-sm text-zinc-500 mt-0.5">Performance, VRAM & benchmark tracking</p>
+        </div>
+        <button onClick={()=>fetch('/vram/refresh-models',{method:'POST'}).then(load)}
+          className="px-3 py-1.5 text-xs font-medium rounded-lg transition-all text-zinc-400 hover:text-zinc-200"
+          style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)'}}>↺ Refresh VRAM</button>
+      </div>
+      {vram && (
+        <div className="forge-card">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"/>
+            <span className="text-xs font-semibold text-zinc-300">VRAM — GTX 1650 SUPER (4GB)</span>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {(vram.loaded||[]).length===0
+              ? <p className="text-xs text-zinc-600">No models loaded in VRAM — will load on first inference</p>
+              : (vram.loaded||[]).map(m=>(
+                  <div key={m.name} className="px-3 py-2 rounded-lg text-xs" style={{background:'rgba(16,185,129,0.1)',border:'1px solid rgba(16,185,129,0.2)'}}>
+                    <p className="font-semibold text-emerald-300">{m.name}</p>
+                    {m.size_vram && <p className="text-emerald-700 mt-0.5">{(m.size_vram/1e9).toFixed(1)}GB</p>}
+                  </div>
+                ))
+            }
+          </div>
+        </div>
+      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {Object.entries(MODEL_META).map(([name,meta],i)=>{
+          const s=stats?.models?.find(m=>m.model===name)
+          return (
+            <AnimatedContent key={name} delay={i*60} distance={20}>
+              <SpotlightCard spotlightColor={`${meta.color}25`} className="forge-pcard">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full" style={{background:meta.color}}/>
+                      <h3 className="text-sm font-semibold text-white">{name}</h3>
+                    </div>
+                    <p className="text-[11px] text-zinc-500 mt-0.5 ml-4">{meta.roles}</p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{background:`${TIER_COLOR[meta.tier]}18`,color:TIER_COLOR[meta.tier]}}>{meta.tier}</span>
+                    {s?.avg_score && <p className="text-lg font-bold mt-1" style={{color:meta.color}}>{s.avg_score.toFixed(1)}<span className="text-xs text-zinc-500">/10</span></p>}
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2 mt-3">
+                  {[{label:'Speed',val:s?.avg_tok_per_sec?`${s.avg_tok_per_sec.toFixed(0)}t/s`:meta.speed},{label:'Context',val:meta.ctx},{label:'Calls',val:s?.total_calls??'0'}].map(({label,val})=>(
+                    <div key={label} className="p-2 rounded-lg text-center" style={{background:'rgba(255,255,255,0.025)',border:'1px solid rgba(255,255,255,0.05)'}}>
+                      <p className="text-[10px] text-zinc-600">{label}</p>
+                      <p className="text-xs font-semibold text-zinc-300 mt-0.5">{val}</p>
+                    </div>
+                  ))}
+                </div>
+              </SpotlightCard>
+            </AnimatedContent>
+          )
+        })}
+      </div>
+      {history.length>0 && (
+        <div className="forge-card">
+          <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-3">Recent Benchmarks</h3>
+          <div className="space-y-1 max-h-64 overflow-y-auto forge-scroll">
+            {history.map((h,i)=>{
+              const col=MODEL_META[h.model]?.color||'#7c3aed'
+              return (
+                <div key={i} className="flex items-center gap-3 py-1.5 px-2 rounded-lg hover:bg-white/[0.03] transition-all">
+                  <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{background:col}}/>
+                  <span className="text-[11px] text-zinc-400 flex-1 truncate">{h.model}</span>
+                  <span className="text-[11px] text-zinc-600 w-20 truncate">{h.role}</span>
+                  <span className="text-[11px] font-medium" style={{color:col}}>{h.tok_per_sec?.toFixed(0)}t/s</span>
+                  <span className="text-[11px] text-zinc-600 w-12 text-right">{(h.duration_ms/1000).toFixed(1)}s</span>
+                  {h.quality_score!=null && <span className="text-[11px] font-semibold w-10 text-right" style={{color:h.quality_score>=8?'#10b981':h.quality_score>=6?'#d97706':'#ef4444'}}>{h.quality_score}/10</span>}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Settings() {
+  const [vram,setVram]=useState(null)
+  useEffect(()=>{ apiFetch('/vram/status').then(d=>{ if(d) setVram(d) }) },[])
+  const unload=async(model)=>{ await fetch('/vram/unload',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model})}); apiFetch('/vram/status').then(d=>{ if(d) setVram(d) }) }
+  const ROLES=[
+    {role:'orchestrator',model:'deepseek-r1:1.5b',tier:'Planner'},
+    {role:'architect',model:'deepseek-r1:1.5b',tier:'Planner'},
+    {role:'researcher',model:'deepseek-r1:1.5b',tier:'Planner'},
+    {role:'coder',model:'qwen2.5-coder:3b',tier:'Workhorse'},
+    {role:'refactor',model:'qwen2.5-coder:3b',tier:'Workhorse'},
+    {role:'tester',model:'qwen2.5-coder:3b',tier:'Workhorse'},
+    {role:'reviewer',model:'deepseek-coder:6.7b',tier:'Auditor'},
+    {role:'debugger',model:'deepseek-coder:6.7b',tier:'Auditor'},
+    {role:'docs',model:'deepseek-coder:1.3b',tier:'Fast'},
+  ]
+  return (
+    <div className="space-y-6">
+      <div>
+        <BlurText text="Settings" className="text-2xl font-bold text-white" animateBy="words" delay={60}/>
+        <p className="text-sm text-zinc-500 mt-0.5">Agent roles, VRAM control & system config</p>
+      </div>
+      <div className="forge-card">
+        <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-4">Agent Role Routing</h3>
+        <div className="space-y-2">
+          {ROLES.map(r=>(
+            <div key={r.role} className="flex items-center gap-3 py-2 px-3 rounded-xl transition-all" style={{background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.04)'}}>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full w-20 text-center flex-shrink-0" style={{background:`${TIER_COLOR[r.tier]}18`,color:TIER_COLOR[r.tier]}}>{r.tier}</span>
+              <span className="text-xs font-semibold text-zinc-300 w-24">{r.role}</span>
+              <span className="text-xs text-zinc-500 flex-1">{r.model}</span>
+              <div className="w-1.5 h-1.5 rounded-full" style={{background:TIER_COLOR[r.tier]}}/>
+            </div>
+          ))}
+        </div>
+      </div>
+      {vram && (
+        <div className="forge-card">
+          <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-4">VRAM Control</h3>
+          {(vram.loaded||[]).length===0
+            ? <p className="text-xs text-zinc-600 py-2">No models loaded in VRAM</p>
+            : (vram.loaded||[]).map(m=>(
+                <div key={m.name} className="flex items-center justify-between py-2 px-3 rounded-xl mb-2" style={{background:'rgba(255,255,255,0.025)',border:'1px solid rgba(255,255,255,0.06)'}}>
+                  <div>
+                    <p className="text-xs font-semibold text-zinc-300">{m.name}</p>
+                    {m.size_vram && <p className="text-[10px] text-zinc-600">{(m.size_vram/1e9).toFixed(2)}GB in VRAM</p>}
+                  </div>
+                  <button onClick={()=>unload(m.name)} className="px-2.5 py-1 rounded-lg text-[11px] transition-all" style={{background:'rgba(239,68,68,0.1)',color:'#fca5a5',border:'1px solid rgba(239,68,68,0.2)'}}>Unload</button>
+                </div>
+              ))
+          }
+        </div>
+      )}
+      <div className="forge-card">
+        <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-4">System Info</h3>
+        <div className="grid grid-cols-2 gap-2">
+          {[['GPU','GTX 1650 SUPER'],['VRAM','4 GB GDDR6'],['RAM','16 GB'],['Inference','100% Local'],['Server','localhost:3737'],['Version','Forge v3.0']].map(([l,v])=>(
+            <div key={l} className="flex items-center justify-between px-3 py-2 rounded-lg" style={{background:'rgba(255,255,255,0.02)'}}>
+              <span className="text-[11px] text-zinc-600">{l}</span>
+              <span className="text-[11px] font-medium text-zinc-400">{v}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function App() {
+  const [tab,setTab]=useState('overview')
+  const [projects,setProjects]=useState([])
+  const [mobile,setMobile]=useState(false)
+  const loadP=useCallback(async()=>{ const d=await apiFetch('/projects'); if(Array.isArray(d)) setProjects(d) },[])
+  useEffect(()=>{ loadP(); const iv=setInterval(loadP,8000); return()=>clearInterval(iv) },[loadP])
+  useEffect(()=>{ const c=()=>setMobile(window.innerWidth<768); c(); window.addEventListener('resize',c); return()=>window.removeEventListener('resize',c) },[])
+  const runProject=async(id)=>{ await fetch(`/project/${id}/auto-run`,{method:'POST'}).catch(()=>{}); setTimeout(loadP,1000) }
+  return (
+    <div className="forge-root">
+      <div className="forge-bg">
+        <Aurora colorStops={['#0d0018','#000a14','#001209']} amplitude={0.55} blend={0.75} speed={0.2}/>
+      </div>
+      <div className="forge-shell">
+        {!mobile && <Sidebar tab={tab} setTab={setTab} projects={projects}/>}
+        <div className="forge-body">
+          {mobile && (
+            <nav className="flex gap-1.5 px-3 pt-3 overflow-x-auto forge-scroll">
+              {NAV.map(n=>(
+                <button key={n.id} onClick={()=>setTab(n.id)} className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${tab===n.id?'bg-violet-500/15 text-violet-200 border-violet-500/25':'text-zinc-500 border-white/[0.06]'}`}>
+                  {n.icon} {n.label}
+                </button>
+              ))}
+            </nav>
+          )}
+          <main className="forge-main">
+            {tab==='overview'&&<Overview projects={projects} onRun={runProject}/>}
+            {tab==='pipeline'&&<Pipeline projects={projects}/>}
+            {tab==='chat'    &&<Chat/>}
+            {tab==='models'  &&<Models/>}
+            {tab==='settings'&&<Settings/>}
+          </main>
+        </div>
+      </div>
+    </div>
+  )
+}

@@ -1,0 +1,74 @@
+{
+  "name": "Forge Master Workflow",
+  "nodes": [
+    {
+      "id": "webhook-trigger",
+      "name": "Forge Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "parameters": { "path": "forge", "responseMode": "lastNode", "httpMethod": "POST" },
+      "position": [100, 300]
+    },
+    {
+      "id": "event-router",
+      "name": "Event Router",
+      "type": "n8n-nodes-base.switch",
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.type || $json.action }}",
+        "rules": {
+          "rules": [
+            { "value2": "task_done", "output": 0 },
+            { "value2": "epic_complete", "output": 1 },
+            { "value2": "create_project", "output": 2 },
+            { "value2": "benchmark_complete", "output": 3 }
+          ]
+        }
+      },
+      "position": [300, 300]
+    },
+    {
+      "id": "quality-check",
+      "name": "Quality Check",
+      "type": "n8n-nodes-base.if",
+      "parameters": {
+        "conditions": { "number": [{ "value1": "={{ $json.score }}", "operation": "smaller", "value2": 6 }] }
+      },
+      "position": [500, 200]
+    },
+    {
+      "id": "schedule-daily",
+      "name": "Daily 3am Improve",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "parameters": { "rule": { "interval": [{ "field": "cronExpression", "expression": "0 3 * * *" }] } },
+      "position": [100, 500]
+    },
+    {
+      "id": "schedule-6hr",
+      "name": "6hr Memory Compress",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "parameters": { "rule": { "interval": [{ "field": "hours", "value": 6 }] } },
+      "position": [100, 600]
+    },
+    {
+      "id": "call-improve",
+      "name": "Call /schedule/improve",
+      "type": "n8n-nodes-base.httpRequest",
+      "parameters": { "url": "http://localhost:3737/schedule/improve", "method": "POST" },
+      "position": [300, 500]
+    },
+    {
+      "id": "call-compress",
+      "name": "Call /schedule/compress-memory",
+      "type": "n8n-nodes-base.httpRequest",
+      "parameters": { "url": "http://localhost:3737/schedule/compress-memory", "method": "POST" },
+      "position": [300, 600]
+    }
+  ],
+  "connections": {
+    "Forge Webhook": { "main": [[{ "node": "Event Router", "type": "main", "index": 0 }]] },
+    "Event Router": { "main": [[{ "node": "Quality Check", "type": "main", "index": 0 }], [], [], []] },
+    "Daily 3am Improve": { "main": [[{ "node": "Call /schedule/improve", "type": "main", "index": 0 }]] },
+    "6hr Memory Compress": { "main": [[{ "node": "Call /schedule/compress-memory", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}
