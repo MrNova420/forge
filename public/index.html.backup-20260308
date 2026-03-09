@@ -1,0 +1,3036 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔨 The Forge — AI Dev Team</title>
+<style>
+  :root {
+    --bg: #0a0a14; --bg2: #0d0d1a; --bg3: #111122;
+    --border: #1e1e35; --border2: #2a2a45;
+    --accent: #7c6af5; --accent2: #4a3fa0;
+    --green: #4caf50; --red: #f44336; --yellow: #ff9800; --blue: #3498db;
+    --text: #e8e8f0; --text2: #9090a8; --text3: #505068;
+    --radius: 10px; --font: 'Segoe UI', system-ui, sans-serif;
+    /* Enhanced dark mode palette */
+    --bg-primary: #0a0a14;
+    --bg-secondary: #0d0d1a;
+    --bg-card: #111122;
+    --bg-elevated: #16162a;
+    --border-bright: #2a2a45;
+    --text-primary: #e8e8f0;
+    --text-secondary: #9090a8;
+    --text-muted: #505068;
+    --accent-dim: #4a3fa0;
+    --success: #4caf50;
+    --warning: #ff9800;
+    --error: #f44336;
+    --code-bg: #080810;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
+
+  /* ── Layout ── */
+  .app { display: grid; grid-template-rows: 56px auto auto 1fr; height: 100vh; overflow: hidden; }
+  .main { display: grid; grid-template-columns: 260px 1fr 340px; height: 100%; overflow: hidden; }
+
+  /* ── Header ── */
+  header {
+    background: var(--bg2); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 20px; gap: 16px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { font-size: 20px; font-weight: 700; color: var(--accent); letter-spacing: -0.5px; }
+  .logo span { color: var(--text2); font-weight: 400; }
+  .status-pill {
+    display: flex; align-items: center; gap: 6px; padding: 4px 12px;
+    border-radius: 20px; font-size: 12px; font-weight: 600; border: 1px solid;
+  }
+  .status-pill.ok { border-color: var(--green); color: var(--green); background: #2ecc7115; }
+  .status-pill.err { border-color: var(--red); color: var(--red); background: #e74c3c15; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .header-stats { display: flex; gap: 20px; margin-left: auto; }
+  .hstat { text-align: right; }
+  .hstat-val { font-size: 18px; font-weight: 700; color: var(--accent); }
+  .hstat-lbl { font-size: 11px; color: var(--text3); }
+  .btn {
+    padding: 6px 14px; border-radius: 6px; border: none; cursor: pointer;
+    font-size: 13px; font-weight: 600; transition: all 0.15s;
+  }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-ghost { background: transparent; color: var(--text2); border: 1px solid var(--border2); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-danger { background: var(--red); color: white; }
+  .btn-success { background: var(--green); color: #111; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    background: var(--bg2); border-right: 1px solid var(--border);
+    overflow-y: auto; padding: 16px 12px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .sidebar-section { font-size: 10px; font-weight: 700; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; padding: 10px 8px 4px; }
+  .proj-item {
+    padding: 10px 12px; border-radius: 8px; cursor: pointer;
+    border: 1px solid transparent; transition: all 0.15s;
+  }
+  .proj-item:hover { background: var(--bg3); border-color: var(--border); }
+  .proj-item.active { background: var(--bg3); border-color: var(--accent); }
+  .proj-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .proj-meta { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .progress-bar { height: 3px; background: var(--bg3); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.5s; }
+  .nav-btn {
+    display: flex; align-items: center; gap: 8px; padding: 9px 12px;
+    border-radius: 8px; cursor: pointer; font-size: 13px;
+    color: var(--text2); transition: all 0.15s; border: none; background: none; width: 100%; text-align: left;
+  }
+  .nav-btn:hover { background: var(--bg3); color: var(--text); }
+  .nav-btn.active { background: var(--bg3); color: var(--accent); }
+
+  /* ── Main Content ── */
+  .content { overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+
+  /* ── Cards ── */
+  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+  .card-title { font-size: 13px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .stat-box { background: var(--bg3); border-radius: 8px; padding: 14px; text-align: center; border: 1px solid var(--border); }
+  .stat-num { font-size: 28px; font-weight: 800; }
+  .stat-lbl { font-size: 11px; color: var(--text3); margin-top: 4px; }
+  .stat-num.green { color: var(--green); }
+  .stat-num.yellow { color: var(--yellow); }
+  .stat-num.blue { color: var(--blue); }
+  .stat-num.accent { color: var(--accent); }
+
+  /* ── Task list ── */
+  .task-list { display: flex; flex-direction: column; gap: 8px; }
+  .task-row {
+    display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+    background: var(--bg3); border-radius: 8px; border: 1px solid var(--border);
+    transition: border-color 0.15s; cursor: pointer;
+  }
+  .task-row:hover { border-color: var(--border2); }
+  .task-row.running { border-color: var(--yellow); animation: glow 2s infinite; }
+  @keyframes glow { 0%,100%{box-shadow:0 0 0 0 transparent} 50%{box-shadow:0 0 10px 2px #f39c1220} }
+  .task-badge {
+    font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .badge-done { background: #2ecc7120; color: var(--green); border: 1px solid #2ecc7140; }
+  .badge-pending { background: #9090b015; color: var(--text3); border: 1px solid var(--border); }
+  .badge-running { background: #f39c1220; color: var(--yellow); border: 1px solid #f39c1240; }
+  .badge-failed { background: #e74c3c20; color: var(--red); border: 1px solid #e74c3c40; }
+  .task-title { flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .task-score { font-size: 13px; font-weight: 700; min-width: 42px; text-align: right; }
+  .score-high { color: var(--green); }
+  .score-mid { color: var(--yellow); }
+  .score-low { color: var(--red); }
+  .task-epic { font-size: 11px; color: var(--text3); flex-shrink: 0; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ── Runner panel ── */
+  .runner-panel { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .runner-indicator {
+    display: flex; align-items: center; gap: 8px; padding: 8px 16px;
+    border-radius: 20px; font-size: 13px; font-weight: 600; border: 1px solid;
+  }
+  .runner-indicator.on { border-color: var(--green); color: var(--green); background: #2ecc7112; }
+  .runner-indicator.off { border-color: var(--border2); color: var(--text3); }
+
+  /* ── Right panel ── */
+  .right-panel {
+    background: var(--bg2); border-left: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .panel-tabs { display: flex; border-bottom: 1px solid var(--border); }
+  .panel-tab {
+    flex: 1; padding: 12px; font-size: 12px; font-weight: 600; cursor: pointer;
+    color: var(--text3); border-bottom: 2px solid transparent; transition: all 0.15s;
+    text-align: center; background: none; border-top: none; border-left: none; border-right: none;
+  }
+  .panel-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .panel-tab:hover:not(.active) { color: var(--text2); }
+  .panel-body { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+
+  /* ── Agent chat ── */
+  .chat-msg { display: flex; gap: 12px; padding: 8px 0; align-items: flex-start; }
+  .chat-msg.user { display: block; background: var(--accent); color: white; align-self: flex-end; max-width: 90%; border-radius: 8px 8px 2px 8px; padding: 10px 12px; font-size: 13px; line-height: 1.5; }
+  .chat-msg.agent { display: block; background: var(--bg3); border: 1px solid var(--border); max-width: 95%; border-radius: 8px 8px 8px 2px; padding: 10px 12px; font-size: 13px; line-height: 1.5; }
+  .chat-msg.system { display: block; background: transparent; color: var(--text3); font-size: 11px; text-align: center; border: none; padding: 4px 0; }
+  .user-msg .msg-content { background: var(--accent); color: white; border-radius: 12px 12px 4px 12px; padding: 10px 14px; font-size: 13px; line-height: 1.6; max-width: 80%; }
+  .assist-msg .msg-content { background: transparent; padding: 6px 0; font-size: 13px; line-height: 1.8; max-width: 90%; white-space: pre-wrap; }
+  .msg-avatar { font-size: 18px; width: 28px; text-align: center; flex-shrink: 0; padding-top: 4px; }
+  .typing-indicator { color: var(--accent); animation: pulse 1s infinite; letter-spacing: 3px; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .chat-input-row { padding: 10px 14px; border-top: 1px solid var(--border); display: flex; gap: 8px; background: var(--bg2); align-items: flex-end; }
+  .chat-input {
+    flex: 1; background: var(--bg3); border: 1px solid var(--border); border-radius: 12px;
+    color: var(--text); padding: 10px 14px; font-size: 13px; resize: none; min-height: 44px;
+    max-height: 150px; overflow-y: auto; line-height: 1.5; font-family: var(--font); outline: none;
+    transition: border-color 0.2s;
+  }
+  .chat-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(99,102,241,0.2); }
+  .chat-suggestions { display: flex; gap: 6px; flex-wrap: wrap; padding: 6px 14px 2px; }
+  .suggestion-chip { background: var(--bg3); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; font-size: 11px; color: var(--text3); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .suggestion-chip:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .agent-select {
+    background: var(--bg3); border: 1px solid var(--border); color: var(--text);
+    border-radius: 6px; padding: 6px 10px; font-size: 12px; outline: none;
+  }
+  .thinking { color: var(--text3); font-size: 12px; animation: ellipsis 1.5s infinite; }
+  @keyframes ellipsis { 0%{content:'.'} 33%{content:'..'} 66%{content:'...'} }
+
+  /* ── Log viewer ── */
+  .log-box {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px; font-family: 'Courier New', monospace; font-size: 11px;
+    line-height: 1.6; color: #a0c0a0; overflow-y: auto; max-height: 100%;
+    white-space: pre-wrap; word-break: break-all;
+  }
+  .log-box .log-err { color: var(--red); }
+  .log-box .log-ok { color: var(--green); }
+  .log-box .log-warn { color: var(--yellow); }
+
+  /* ── Code viewer ── */
+  .code-box {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px; font-family: 'Courier New', monospace; font-size: 12px;
+    line-height: 1.6; overflow: auto; max-height: 400px; white-space: pre; color: #c0d0e0;
+  }
+  .file-list { display: flex; flex-direction: column; gap: 4px; }
+  .file-item {
+    padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px;
+    font-family: monospace; color: var(--text2); transition: all 0.12s;
+    border: 1px solid transparent;
+  }
+  .file-item:hover { background: var(--bg3); border-color: var(--border); color: var(--text); }
+  .file-item.active { background: var(--bg3); border-color: var(--accent); color: var(--accent); }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: #0008; z-index: 1000;
+    display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--bg2); border: 1px solid var(--border2); border-radius: 14px;
+    padding: 28px; width: 480px; max-width: 95vw; transform: scale(0.95); transition: transform 0.2s;
+  }
+  .modal-overlay.open .modal { transform: scale(1); }
+  .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+  .form-group { margin-bottom: 14px; }
+  .form-label { font-size: 12px; font-weight: 600; color: var(--text2); display: block; margin-bottom: 6px; }
+  .form-input, .form-textarea, .form-select {
+    width: 100%; background: var(--bg3); border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text); padding: 9px 12px; font-size: 14px; outline: none; font-family: var(--font);
+  }
+  .form-textarea { resize: vertical; min-height: 80px; }
+  .form-input:focus, .form-textarea:focus, .form-select:focus { border-color: var(--accent); }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+  /* ── Quality chart ── */
+  .quality-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .quality-label { font-size: 12px; width: 80px; color: var(--text2); }
+  .quality-track { flex: 1; height: 8px; background: var(--bg3); border-radius: 4px; overflow: hidden; }
+  .quality-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent2), var(--accent)); transition: width 0.8s; }
+  .quality-val { font-size: 12px; font-weight: 700; width: 36px; text-align: right; }
+
+  /* ── Empty state ── */
+  .empty { text-align: center; padding: 40px; color: var(--text3); }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-text { font-size: 14px; }
+
+  /* ── Custom agent dropdown ── */
+  .agent-dropdown { position: relative; width: 100%; margin-bottom: 8px; }
+  .agent-dropdown-btn {
+    width: 100%; display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg3); border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text); padding: 7px 12px; font-size: 12px; cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .agent-dropdown-btn:hover, .agent-dropdown-btn.open { border-color: var(--accent); }
+  .agent-dropdown-menu {
+    position: absolute; bottom: calc(100% + 4px); left: 0; right: 0;
+    background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px;
+    overflow: hidden; z-index: 200; display: none; box-shadow: 0 -8px 24px #0008;
+  }
+  .agent-dropdown-menu.open { display: block; }
+  .agent-opt {
+    padding: 9px 14px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px;
+    transition: background 0.1s; border-bottom: 1px solid var(--border);
+  }
+  .agent-opt:last-child { border-bottom: none; }
+  .agent-opt:hover { background: var(--bg3); }
+  .agent-opt.selected { color: var(--accent); background: #7c6af710; }
+  .agent-opt-desc { font-size: 10px; color: var(--text3); margin-left: auto; }
+
+  /* ── Task actions ── */
+  .task-actions { display: flex; gap: 4px; flex-shrink: 0; opacity: 0; transition: opacity 0.15s; }
+  .task-row:hover .task-actions { opacity: 1; }
+  .task-action-btn {
+    padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 600;
+    border: 1px solid var(--border); background: transparent; cursor: pointer; color: var(--text3);
+    transition: all 0.1s;
+  }
+  .task-action-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .task-action-btn.danger:hover { border-color: var(--red); color: var(--red); }
+
+  /* ── Time badges ── */
+  .time-badge { font-size: 10px; color: var(--text3); flex-shrink: 0; }
+
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  /* ── Toasts ── */
+  .toast-container { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 9999; }
+  .toast {
+    padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+    background: var(--bg2); border: 1px solid var(--border2); max-width: 320px;
+    animation: slideIn 0.3s ease; box-shadow: 0 4px 20px #0006;
+  }
+  .toast.success { border-color: var(--green); color: var(--green); }
+  .toast.error { border-color: var(--red); color: var(--red); }
+  .toast.info { border-color: var(--blue); color: var(--blue); }
+  @keyframes slideIn { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
+
+  /* ── Spinner ── */
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to{transform:rotate(360deg)} }
+
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .section-title { font-size: 16px; font-weight: 700; }
+  .badge-count { background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; font-size: 11px; padding: 2px 8px; color: var(--text3); }
+  .gpu-bar { display:flex;align-items:center;gap:8px;padding:5px 16px;background:var(--bg3);border-bottom:1px solid var(--border);font-size:11px;color:var(--text3); }
+  .gpu-bar .gval { color:var(--text);font-weight:600; }
+  .gpu-bar .hot { color:#ef4444; }
+  .live-dot { width:7px;height:7px;border-radius:50%;background:#22c55e;animation:pulse 1.5s ease-in-out infinite; }
+  .live-dot.inactive { background:var(--text3);animation:none; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.4} }
+  .sse-log { font-size:11px;font-family:monospace;line-height:1.7;max-height:220px;overflow-y:auto;padding:8px 12px; }
+  .sse-entry { padding:2px 0;border-bottom:1px solid var(--border);display:flex;gap:8px; }
+  .sse-entry .sse-icon { width:20px;flex-shrink:0;text-align:center; }
+  .sse-entry .sse-text { color:var(--text2);flex:1; }
+  .sse-entry .sse-time { color:var(--text3);font-size:10px;flex-shrink:0; }
+  .model-select { background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;padding:3px 8px;cursor:pointer; }
+
+  /* ── Wizard ── */
+  #wizard-overlay { opacity:1;pointer-events:all; }
+  .wizard-step { display:none }
+  .wizard-step.active { display:block }
+  .wizard-steps-indicator { display:flex;gap:8px;margin-bottom:18px }
+  .wizard-dot { width:8px;height:8px;border-radius:50%;background:var(--border) }
+  .wizard-dot.active { background:var(--accent) }
+  .wizard-dot.done { background:var(--green) }
+  .stack-options { display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 }
+  .stack-opt { padding:10px;background:var(--bg3);border:2px solid var(--border);border-radius:8px;text-align:center;cursor:pointer;font-size:12px;transition:border-color 0.2s }
+  .stack-opt:hover,.stack-opt.selected { border-color:var(--accent);color:var(--accent) }
+  .chart-canvas { width:100%;height:80px;border-radius:6px;background:var(--bg3) }
+  .sse-live-pill { display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;border:1px solid var(--border2);color:var(--text3);cursor:default }
+  .sse-live-pill.live { border-color:var(--green);color:var(--green) }
+  .sse-live-pill .sse-live-dot { width:6px;height:6px;border-radius:50%;background:currentColor }
+  /* ── Task Detail Modal ── */
+  .pipeline-stage { background:#0d0d1a; border:1px solid #2a2a3e; border-radius:4px; padding:10px; margin:8px 0; }
+  .pipeline-stage h4 { color:#7c6af5; margin:0 0 6px 0; font-size:12px; text-transform:uppercase; }
+  .pipeline-stage pre { color:#c0c0c0; white-space:pre-wrap; word-break:break-word; font-size:11px; margin:0; max-height:200px; overflow-y:auto; }
+  .score-badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:bold; }
+  .score-high { background:#1a3a1a; color:#4caf50; }
+  .score-med { background:#3a2a00; color:#ff9800; }
+  .score-low { background:#3a1a1a; color:#f44336; }
+  /* ── Syntax Highlighting ── */
+  .code-keyword { color: #c678dd; }
+  .code-string { color: #98c379; }
+  .code-comment { color: #5c6370; font-style: italic; }
+  .code-number { color: #d19a66; }
+  .code-function { color: #61afef; }
+  .check-item { padding: 8px 0; color: #9090a8; font-size: 13px; border-bottom: 1px solid #1e1e35; }
+  .check-item.ok { color: #4caf50; }
+  .check-item.fail { color: #f44336; }
+
+  /* Grade badge colors */
+  .grade-S { background: #ffd700; color: #000; font-weight: 800; }
+  .grade-A { background: #00c851; color: #fff; font-weight: 800; }
+  .grade-B { background: #007bff; color: #fff; font-weight: 800; }
+  .grade-C { background: #ff8800; color: #fff; font-weight: 800; }
+  .grade-D { background: #ff4444; color: #fff; font-weight: 800; }
+  .grade-badge-large { display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 12px; font-size: 2rem; line-height: 1; flex-shrink: 0; }
+
+  /* Pipeline stage timeline (chat events) */
+  .pipeline-stage-chat { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-family: monospace; }
+  .pipeline-stage-chat.done { color: var(--green); }
+  .pipeline-stage-chat.running { color: var(--accent); animation: pulse 1s infinite; }
+  .pipeline-stage-chat.error { color: var(--red); }
+
+  /* System status bar */
+  #system-status-bar { background: var(--bg2); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 20px; padding: 4px 20px; font-size: 11px; color: var(--text3); flex-wrap: wrap; }
+  #system-status-bar .ss-item { display: flex; align-items: center; gap: 5px; }
+
+  /* Grade badges for quality */
+  .grade-S { color: #ffd700; font-weight: 700; }
+  .grade-A { color: #4caf50; font-weight: 700; }
+  .grade-B { color: #2196f3; font-weight: 700; }
+  .grade-C { color: #ff9800; font-weight: 700; }
+  .grade-D { color: #f44336; font-weight: 700; }
+  .grade-F { color: #9e9e9e; font-weight: 700; }
+
+  /* File tree */
+  .file-tree { padding: 4px 0; }
+  .file-tree-item { padding: 4px 8px; font-size: 12px; cursor: pointer; border-radius: 4px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .file-tree-item:hover { background: var(--bg3); color: var(--text); }
+
+  /* Quick Ask bar */
+  #quick-ask-input::placeholder { color: var(--text3); }
+  #quick-ask-input:focus { outline: none; border-color: var(--accent); }
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+</head>
+<body>
+<!-- File Editor Panel -->
+<div id="file-editor-panel" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.88);z-index:1000;flex-direction:column;padding:20px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <span id="editor-filename" style="font-weight:700;font-size:15px;color:#fff;font-family:monospace;"></span>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button onclick="runEditorAction('explain')" class="btn btn-ghost" style="font-size:12px;">🔍 Explain</button>
+      <button onclick="runEditorAction('fix')" class="btn btn-ghost" style="font-size:12px;">⚡ Fix</button>
+      <button onclick="runEditorAction('test')" class="btn btn-ghost" style="font-size:12px;">🧪 Tests</button>
+      <button onclick="runEditorAction('refactor')" class="btn btn-ghost" style="font-size:12px;">✂️ Refactor</button>
+      <button onclick="saveEditorFile()" class="btn btn-primary" style="font-size:12px;">💾 Save</button>
+      <button onclick="closeFileEditor()" class="btn btn-ghost" style="font-size:12px;">✕ Close</button>
+    </div>
+  </div>
+  <textarea id="file-editor" style="flex:1;background:#1e1e2e;color:#cdd6f4;border:1px solid #313244;border-radius:8px;padding:16px;font-family:'Fira Code',monospace;font-size:13px;line-height:1.6;resize:none;tab-size:2;" spellcheck="false"></textarea>
+  <div id="editor-result" style="display:none;max-height:220px;overflow-y:auto;background:#181825;border:1px solid #313244;border-radius:8px;padding:12px;margin-top:8px;font-size:13px;color:#cdd6f4;white-space:pre-wrap;font-family:monospace;"></div>
+</div>
+<!-- Real-Time Progress Bar -->
+<div id="progress-bar-container" style="display:none;position:fixed;top:0;left:0;right:0;z-index:500;background:#0d0d1a;border-bottom:1px solid #1e1e35;padding:8px 16px;">
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div style="flex:1;background:#0a0a14;height:4px;border-radius:2px;overflow:hidden;">
+      <div id="progress-fill" style="height:100%;background:#7c6af5;width:0%;transition:width 0.3s;"></div>
+    </div>
+    <div id="progress-text" style="color:#9090a8;font-size:12px;white-space:nowrap;min-width:200px;"></div>
+    <div id="progress-score" style="font-size:12px;font-family:monospace;"></div>
+  </div>
+</div>
+<div class="app" id="app">
+  <!-- Header -->
+  <header>
+    <div class="logo">🔨 The <span>Forge</span></div>
+    <div class="status-pill ok" id="server-status"><div class="dot"></div><span>Connected</span></div>
+    <div id="runner-header" class="runner-indicator off"><div class="dot"></div><span>Runner idle</span></div>
+    <div id="model-status" style="font-size:11px;padding:3px 10px;border-radius:12px;border:1px solid var(--border2);color:var(--text3);display:flex;align-items:center;gap:5px;">
+      <span id="model-dot" style="width:6px;height:6px;border-radius:50%;background:var(--text3);display:inline-block"></span>
+      <span id="model-status-text">Model idle</span>
+    </div>
+    <div class="header-stats">
+      <div class="hstat"><div class="hstat-val" id="h-done">—</div><div class="hstat-lbl">Done</div></div>
+      <div class="hstat"><div class="hstat-val" id="h-pending">—</div><div class="hstat-lbl">Pending</div></div>
+      <div class="hstat"><div class="hstat-val" id="h-score">—</div><div class="hstat-lbl">Avg Quality</div></div>
+    </div>
+    <div id="vram-bar-header" style="display:flex;align-items:center;gap:6px;font-size:11px;color:#888;">
+      <span>VRAM</span>
+      <div style="width:80px;height:6px;background:#1a1a2e;border-radius:3px;overflow:hidden;">
+        <div id="vram-fill" style="height:100%;background:#7c6af5;width:0%;transition:width 0.5s;"></div>
+      </div>
+      <span id="vram-label">--</span>
+    </div>
+    <select class="model-select" id="model-picker" title="Active model" onchange="switchModel(this.value)">
+      <option value="">⏳ loading models…</option>
+    </select>
+    <button class="btn btn-primary" onclick="openWizard()">+ New Project</button>
+    <button class="btn btn-ghost" id="auto-refresh-btn" onclick="toggleAutoRefresh()" title="Toggle auto-refresh">🔄 Auto</button>
+    <div class="sse-live-pill" id="sse-live-pill"><div class="sse-live-dot"></div><span id="sse-live-label">LIVE</span></div>
+    <button class="btn btn-ghost" onclick="refreshAll()">↺ Refresh</button>
+    <button onclick="openHelp()" style="background:none;border:1px solid #2a2a45;color:#9090a8;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:12px;" title="Help">?</button>
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:var(--text2);white-space:nowrap;">
+      <input type="checkbox" id="copilot-mode" onchange="toggleCopilotMode(this.checked)" checked style="accent-color:var(--accent);">
+      ⚡ Copilot Mode
+    </label>
+    <div id="quick-ask-bar" style="display:flex;gap:6px;align-items:center;">
+      <input type="text" id="quick-ask-input" placeholder="Ask Forge anything… (Enter)"
+        style="width:260px;background:var(--bg3);border:1px solid var(--border2);border-radius:20px;padding:5px 14px;color:var(--text);font-size:12px;"
+        onkeydown="if(event.key==='Enter')quickAsk()">
+      <button onclick="quickAsk()" class="btn btn-primary" style="border-radius:20px;padding:5px 14px;font-size:12px;white-space:nowrap;">⚡ Ask</button>
+    </div>
+  </header>
+  <!-- System Status Bar -->
+  <div id="system-status-bar">
+    <span class="ss-item">🟢 Server: <span id="ss-server" style="color:var(--green);font-weight:600">Online</span></span>
+    <span class="ss-item">🧠 Model: <span id="ss-model" style="color:var(--text2);font-weight:600">phi3.5-forge</span></span>
+    <span class="ss-item">💾 VRAM: <span id="ss-vram-pct" style="color:var(--text2);font-weight:600">—%</span></span>
+    <span class="ss-item">📊 <span id="ss-tasks" style="color:var(--accent);font-weight:600">—</span> tasks done</span>
+  </div>
+  <!-- GPU status bar -->
+  <div class="gpu-bar" id="gpu-bar">
+    <div class="live-dot inactive" id="sse-dot" title="Live events"></div>
+    <span>GPU:</span> <span class="gval" id="gpu-temp">—°C</span>
+    <span>VRAM:</span> <span class="gval" id="gpu-vram">—MB</span>
+    <span>Power:</span> <span class="gval" id="gpu-power">—W</span>
+    <span style="margin-left:auto;color:var(--text3)" id="live-event-text">Connecting to live stream…</span>
+  </div>
+
+  <div class="main">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-section">Navigation</div>
+      <button class="nav-btn active" id="nav-overview" onclick="showView('overview')">📊 Overview</button>
+      <button class="nav-btn" id="nav-tasks" onclick="showView('tasks')">✅ All Tasks</button>
+      <button class="nav-btn" id="nav-quality" onclick="showView('quality')">📈 Quality</button>
+
+      <div class="sidebar-section" style="margin-top:8px">Projects</div>
+      <div id="proj-list">
+        <div class="empty"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- Main content area (swappable views) -->
+    <div class="content" id="content-area">
+      <!-- Overview injected here -->
+    </div>
+
+    <!-- Right panel -->
+    <div class="right-panel">
+      <div class="panel-tabs">
+        <button class="panel-tab active" onclick="switchTab('chat')" id="tab-chat">💬 Chat</button>
+        <button class="panel-tab" onclick="switchTab('live')" id="tab-live">⚡ Live</button>
+        <button class="panel-tab" onclick="switchTab('metrics')" id="tab-metrics">📊 Metrics</button>
+        <button class="panel-tab" onclick="switchTab('search')" id="tab-search">🔍 Research</button>
+        <button class="panel-tab" onclick="switchTab('logs')" id="tab-logs">📋 Logs</button>
+        <button class="panel-tab" onclick="switchTab('files')" id="tab-files">📁 Files</button>
+        <button class="panel-tab" onclick="switchTab('examples')" id="tab-examples">📚 Examples</button>
+      </div>
+
+      <!-- Chat panel -->
+      <div id="panel-chat" style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+        <!-- Auto-Build progress panel (persists across tab switches) -->
+        <div id="auto-build-panel" style="display:none; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px; margin:8px 14px 0; flex-shrink:0;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <span style="font-weight:700; font-size:14px;">⚡ Auto-Build Running</span>
+            <button onclick="stopAutoBuild()" class="btn btn-outline" style="font-size:11px;padding:3px 10px;color:#f44336;border-color:#f44336;">⏹ Stop</button>
+          </div>
+          <div id="auto-build-progress" style="margin-bottom:10px;">
+            <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--text2); margin-bottom:6px;">
+              <span id="ab-status">Starting...</span>
+              <span id="ab-count">0 / 0</span>
+            </div>
+            <div style="background:var(--surface2); border-radius:4px; height:6px; overflow:hidden;">
+              <div id="ab-bar" style="background:linear-gradient(90deg,#6366f1,#8b5cf6); height:100%; width:0%; transition:width 0.3s;"></div>
+            </div>
+          </div>
+          <div id="auto-build-log" style="max-height:200px; overflow-y:auto; font-size:12px; font-family:monospace; color:var(--text2); line-height:1.6;"></div>
+        </div>
+        <div class="panel-body" id="chat-messages" style="flex:1">
+          <div class="chat-msg system">Ask any agent a question or request code.</div>
+        </div>
+        <div style="padding:8px 14px;border-top:1px solid var(--border)">
+          <!-- Custom agent dropdown — no browser native popup -->
+          <div class="agent-dropdown" id="agent-dropdown">
+            <button class="agent-dropdown-btn" id="agent-dropdown-btn" onclick="toggleAgentDropdown(event)">
+              <span id="agent-selected-label">🧑‍💻 Coder</span>
+              <span style="font-size:10px;color:var(--text3)" id="agent-arrow">▲</span>
+            </button>
+            <div class="agent-dropdown-menu" id="agent-dropdown-menu">
+              <div class="agent-opt selected" data-val="coder" onclick="selectAgent('coder','🧑‍💻 Coder')">🧑‍💻 Coder<span class="agent-opt-desc">writes code</span></div>
+              <div class="agent-opt" data-val="architect" onclick="selectAgent('architect','🏗 Architect')">🏗 Architect<span class="agent-opt-desc">plans structure</span></div>
+              <div class="agent-opt" data-val="reviewer" onclick="selectAgent('reviewer','🔍 Reviewer')">🔍 Reviewer<span class="agent-opt-desc">FAANG review</span></div>
+              <div class="agent-opt" data-val="debugger" onclick="selectAgent('debugger','🐛 Debugger')">🐛 Debugger<span class="agent-opt-desc">finds bugs</span></div>
+              <div class="agent-opt" data-val="tester" onclick="selectAgent('tester','🧪 Tester')">🧪 Tester<span class="agent-opt-desc">writes tests</span></div>
+              <div class="agent-opt" data-val="refactor" onclick="selectAgent('refactor','♻️ Refactor')">♻️ Refactor<span class="agent-opt-desc">improves code</span></div>
+              <div class="agent-opt" data-val="orchestrator" onclick="selectAgent('orchestrator','🎯 Orchestrator')">🎯 Orchestrator<span class="agent-opt-desc">coordinates all</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="chat-input-row">
+          <textarea class="chat-input" id="chat-input" rows="2" placeholder="Tell the dev team what to build, fix, or add… e.g. 'build a todo CLI in node' or 'add authentication to the API'"></textarea>
+          <button class="btn btn-ghost" onclick="clearChatHistory()" title="Clear chat history" style="font-size:12px;padding:6px 10px">🗑</button>
+          <button class="btn btn-primary" onclick="sendChat()" id="chat-send">Send</button>
+        </div>
+        <div id="chat-suggestions-container"></div>
+        <div style="padding:4px 14px 8px;font-size:10px;color:#505068;">
+          💡 Commands: <code>add auth middleware</code> · <code>fix failing tests</code> · <code>standup</code> · <code>run tests</code> · <code>make production-ready</code>
+        </div>
+      </div>
+
+      <!-- Logs panel -->
+      <div id="panel-logs" style="flex:1;display:none;flex-direction:column;overflow:hidden;padding:12px">
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <button class="btn btn-ghost" style="font-size:11px" onclick="loadLog('server')">Server</button>
+          <button class="btn btn-ghost" style="font-size:11px" onclick="loadLog('runner')">Runner</button>
+          <button class="btn btn-ghost" style="font-size:11px;margin-left:auto" onclick="loadLog(currentLog)">↺ Refresh</button>
+        </div>
+        <div class="log-box" id="log-content" style="flex:1">Loading...</div>
+      </div>
+
+      <!-- Metrics panel -->
+      <div id="panel-metrics" style="flex:1;display:none;flex-direction:column;overflow-y:auto;padding:12px;gap:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:12px;font-weight:600">📊 Pipeline Metrics</span>
+          <button class="btn btn-ghost" style="font-size:10px;padding:2px 8px" onclick="loadMetrics()">↺ Refresh</button>
+        </div>
+        <div id="metrics-content" style="font-size:12px;color:var(--text2)">Loading metrics…</div>
+        <div id="knowledge-stats" style="margin-top:16px;"></div>
+      </div>
+
+      <!-- Live events panel (SSE) -->
+      <div id="panel-live" style="flex:1;display:none;flex-direction:column;overflow:hidden;padding:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:12px;font-weight:600">⚡ Live Agent Events</span>
+          <div style="display:flex;gap:6px">
+            <div class="live-dot" id="live-panel-dot"></div>
+            <button class="btn btn-ghost" style="font-size:10px;padding:2px 8px" onclick="clearLiveLog()">Clear</button>
+          </div>
+        </div>
+        <div id="agent-status-bar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;padding:8px;background:#0d0d1a;border-radius:6px;">
+          <!-- Populated by JS -->
+        </div>
+        <div class="sse-log" id="sse-log" style="flex:1;overflow-y:auto">
+          <div style="color:var(--text3);font-size:11px">Waiting for pipeline events…</div>
+        </div>
+      </div>
+
+      <!-- Files panel -->
+      <div id="panel-files" style="flex:1;display:none;flex-direction:column;overflow-y:auto">
+        <div id="files-panel">
+          <div class="chat-msg system" style="margin:12px">Select a project → click Browse Files.</div>
+        </div>
+      </div>
+
+      <!-- Research / Web Search panel -->
+      <div id="panel-search" style="flex:1;display:none;flex-direction:column;gap:10px;padding:12px;overflow-y:auto">
+        <div style="display:flex;gap:6px">
+          <input class="form-input" id="search-query" placeholder="Search anything — DDG + npm + StackOverflow…" style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')doSearch()" />
+          <button class="btn btn-primary" onclick="doSearch()" style="font-size:12px;padding:6px 12px">Search</button>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost" style="font-size:10px;padding:3px 10px" onclick="setSearchSource('all')">All</button>
+          <button class="btn btn-ghost" style="font-size:10px;padding:3px 10px" onclick="setSearchSource('web')">Web</button>
+          <button class="btn btn-ghost" style="font-size:10px;padding:3px 10px" onclick="setSearchSource('npm')">npm</button>
+          <button class="btn btn-ghost" style="font-size:10px;padding:3px 10px" onclick="setSearchSource('so')">StackOverflow</button>
+        </div>
+        <div id="search-results" style="font-size:12px;line-height:1.6;color:var(--text2)">
+          Search web, npm packages, and StackOverflow — all at once. No API key needed.
+        </div>
+      </div>
+
+      <!-- Examples panel -->
+      <div id="panel-examples" style="flex:1;display:none;flex-direction:column;overflow:auto;padding:16px;">
+        <h3 style="color:var(--text-primary);margin:0 0 16px 0;">📚 Example Projects</h3>
+        <div id="examples-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Onboarding Overlay -->
+<div id="onboarding-overlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:2000;align-items:center;justify-content:center;">
+  <div style="background:#0d0d1a;border:1px solid #2a2a45;border-radius:12px;padding:40px;max-width:520px;width:90%;">
+    <h2 style="color:#7c6af5;margin:0 0 8px 0;">⚡ Welcome to Forge</h2>
+    <p style="color:#9090a8;margin:0 0 24px 0;">Your local AI development team. Let's make sure everything is set up.</p>
+    <div id="onboarding-checks" style="margin-bottom:24px;">
+      <div class="check-item" id="check-server">⟳ Checking API server...</div>
+      <div class="check-item" id="check-ollama">⟳ Checking Ollama...</div>
+      <div class="check-item" id="check-model">⟳ Checking phi3.5-forge model...</div>
+      <div class="check-item" id="check-vram">⟳ Checking VRAM...</div>
+    </div>
+    <div id="onboarding-tip" style="background:#111122;border:1px solid #1e1e35;border-radius:6px;padding:12px;margin-bottom:24px;color:#9090a8;font-size:13px;">
+      💡 <strong style="color:#e8e8f0">Tip:</strong> Create your first project by clicking <strong style="color:#7c6af5">New Project</strong> in the top right.
+    </div>
+    <button onclick="completeOnboarding()" id="onboarding-btn" style="background:#7c6af5;color:#fff;border:none;padding:12px 24px;border-radius:6px;font-size:14px;cursor:pointer;width:100%;">
+      Get Started →
+    </button>
+  </div>
+</div>
+
+<!-- Help Modal -->
+<div id="help-overlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:1500;overflow:auto;">
+  <div style="background:#0d0d1a;margin:40px auto;max-width:700px;border-radius:8px;padding:28px;border:1px solid #2a2a45;">
+    <div style="display:flex;justify-content:space-between;margin-bottom:20px;">
+      <h3 style="color:#e8e8f0;margin:0;">⚡ Forge Help</h3>
+      <button onclick="closeHelp()" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer;">✕</button>
+    </div>
+    <div style="color:#9090a8;font-size:13px;line-height:1.8;">
+      <h4 style="color:#7c6af5;">Getting Started</h4>
+      <p>1. <strong style="color:#e8e8f0">Create a project</strong> — Click "New Project", describe what you want to build</p>
+      <p>2. <strong style="color:#e8e8f0">The pipeline runs automatically</strong> — 9 agents: research → architect → coder → reviewer → tester → debugger → refactor → security → docs</p>
+      <p>3. <strong style="color:#e8e8f0">Monitor quality scores</strong> — Each task gets scored 1-10. Target is 7+</p>
+      <h4 style="color:#7c6af5;margin-top:16px;">Key Features</h4>
+      <p>📊 <strong style="color:#e8e8f0">Metrics tab</strong> — Quality scores, tasks per hour, improvement over time</p>
+      <p>💬 <strong style="color:#e8e8f0">Chat tab</strong> — Talk directly to any agent. Ask questions, request changes</p>
+      <p>📁 <strong style="color:#e8e8f0">Files tab</strong> — Browse generated code with syntax highlighting</p>
+      <p>🔴 <strong style="color:#e8e8f0">Live tab</strong> — Real-time pipeline events, agent status</p>
+      <h4 style="color:#7c6af5;margin-top:16px;">CLI Commands</h4>
+      <code style="background:#111122;padding:4px 8px;border-radius:4px;display:block;margin:4px 0;">forge status</code>
+      <code style="background:#111122;padding:4px 8px;border-radius:4px;display:block;margin:4px 0;">forge watch</code>
+      <code style="background:#111122;padding:4px 8px;border-radius:4px;display:block;margin:4px 0;">forge new "my-api" "REST API for..."</code>
+      <code style="background:#111122;padding:4px 8px;border-radius:4px;display:block;margin:4px 0;">forge health proj_xxx</code>
+      <h4 style="color:#7c6af5;margin-top:16px;">Hardware Info</h4>
+      <p>Running on GTX 1650 SUPER (4GB VRAM). phi3.5-forge uses ~3.8GB. Keep ctx at 4096 max.</p>
+    </div>
+  </div>
+</div>
+
+<!-- New Project Wizard Modal -->
+<div id="wizard-overlay" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeWizard()">
+  <div class="modal">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h3 style="margin:0">🔨 New Project</h3>
+      <button class="btn btn-ghost" style="font-size:16px;padding:2px 8px" onclick="closeWizard()">✕</button>
+    </div>
+    <div class="wizard-steps-indicator">
+      <div class="wizard-dot active" id="wdot-1"></div>
+      <div class="wizard-dot" id="wdot-2"></div>
+      <div class="wizard-dot" id="wdot-3"></div>
+    </div>
+    <!-- Step 1: Name + description -->
+    <div class="wizard-step active" id="wstep-1">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:12px">Step 1 of 3 — Project Details</div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Project Name</label>
+        <input id="wiz-name" class="chat-input" style="width:100%;box-sizing:border-box;resize:none;height:36px;padding:8px 10px" placeholder="e.g. notes-api, blog-cms, task-cli">
+      </div>
+      <div style="margin-bottom:16px">
+        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Description</label>
+        <textarea id="wiz-desc" class="chat-input" rows="3" style="width:100%;box-sizing:border-box" placeholder="What does this project do? Be specific — agents use this to plan the architecture."></textarea>
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="wizardNext(1)">Next →</button>
+    </div>
+    <!-- Step 2: Stack + model -->
+    <div class="wizard-step" id="wstep-2">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:12px">Step 2 of 3 — Tech Stack & Model</div>
+      <div style="font-size:12px;margin-bottom:6px;color:var(--text2)">Choose stack:</div>
+      <div class="stack-options" style="grid-template-columns:repeat(4,1fr)">
+        <div class="stack-opt selected" data-stack="node" onclick="selectStack(this)">🟢 Node.js</div>
+        <div class="stack-opt" data-stack="react" onclick="selectStack(this)">⚛️ React</div>
+        <div class="stack-opt" data-stack="python" onclick="selectStack(this)">🐍 Python</div>
+        <div class="stack-opt" data-stack="cli" onclick="selectStack(this)">⌨️ CLI</div>
+        <div class="stack-opt" data-stack="rust" onclick="selectStack(this)">🦀 Rust</div>
+        <div class="stack-opt" data-stack="go" onclick="selectStack(this)">🐹 Go</div>
+        <div class="stack-opt" data-stack="web" onclick="selectStack(this)">🌐 Web</div>
+        <div class="stack-opt" data-stack="api" onclick="selectStack(this)">🔌 API</div>
+      </div>
+      <div style="font-size:12px;margin:10px 0 6px;color:var(--text2)">AI Model:</div>
+      <select id="wizard-model" onchange="updateModelVramHint(this.value)" style="width:100%;padding:8px;background:#0d0d1a;color:#e0e0e0;border:1px solid #333;border-radius:4px;margin-top:6px;">
+        <option value="phi3.5-forge">phi3.5-forge (2.2GB - Recommended ✓)</option>
+        <option value="phi3.5:latest">phi3.5:latest (2.2GB)</option>
+        <option value="qwen2.5-coder:1.5b">qwen2.5-coder:1.5b (1.0GB - 16K ctx)</option>
+        <option value="deepseek-coder:1.3b">deepseek-coder:1.3b (0.8GB - 24K ctx)</option>
+      </select>
+      <div id="vram-hint" style="margin-top:6px;font-size:11px;"></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:10px;padding:8px;background:var(--bg3);border-radius:6px;border:1px solid var(--border)">
+        <input type="checkbox" id="wiz-brainstorm" style="accent-color:var(--accent);width:14px;height:14px;cursor:pointer">
+        <label for="wiz-brainstorm" style="font-size:12px;color:var(--text2);cursor:pointer;line-height:1.4">🧠 <strong>Brainstorm mode</strong> — AI explores multiple approaches before committing to architecture</label>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn btn-ghost" style="flex:1" onclick="wizardNext(-1)">← Back</button>
+        <button class="btn btn-primary" style="flex:2" onclick="wizardNext(2)">Next →</button>
+      </div>
+    </div>
+    <!-- Step 3: Review + create -->
+    <div class="wizard-step" id="wstep-3">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:12px">Step 3 of 3 — Review & Launch</div>
+      <div id="wiz-summary" style="background:var(--bg3);border-radius:8px;padding:12px;font-size:12px;margin-bottom:16px;line-height:1.8"></div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:12px">The team will plan the architecture, create tasks, and begin developing immediately.</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" style="flex:1" onclick="wizardNext(-1)">← Back</button>
+        <button class="btn btn-primary" style="flex:2" id="wiz-create-btn" onclick="wizardCreate()">🚀 Launch Project</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Task Detail Modal -->
+<div id="task-detail-overlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:1000;overflow:auto;">
+  <div style="background:#1a1a2e;margin:40px auto;max-width:900px;border-radius:8px;padding:24px;border:1px solid #333;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h3 id="task-detail-title" style="color:#e0e0e0;margin:0;"></h3>
+      <button onclick="closeTaskDetail()" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer;">✕</button>
+    </div>
+    <div id="task-detail-meta" style="color:#888;font-size:12px;margin-bottom:16px;"></div>
+    <div id="task-detail-pipeline" style="color:#ccc;font-size:13px;"></div>
+  </div>
+</div>
+
+<!-- Toasts -->
+<div class="toast-container" id="toasts"></div>
+
+<script>
+const API = '';  // same origin
+let projects = [], tasks = [], stats = {}, selectedProject = null, currentView = 'overview', currentLog = 'runner', currentBrowseProject = null, selectedAgentRole = 'coder', currentSearchSource = 'all';
+let chatHistory = [];
+let sseActive = false;
+let _sseConnection = null;
+
+// ── SSE Live Event Stream ──────────────────────────────────────────────────
+function initSSE() {
+  // Close any existing connection before creating a new one to avoid duplicate events
+  if (_sseConnection) { try { _sseConnection.close(); } catch(e) {} _sseConnection = null; }
+  const es = new EventSource('/events');
+  _sseConnection = es;
+  es.addEventListener('connected', () => {
+    sseActive = true;
+    document.getElementById('sse-dot').classList.remove('inactive');
+    document.getElementById('live-panel-dot')?.classList.remove('inactive');
+    document.getElementById('live-event-text').textContent = '● Live stream active';
+    const pill = document.getElementById('sse-live-pill');
+    if (pill) pill.className = 'sse-live-pill live';
+    addLiveEntry('🔌', 'Connected to Forge live stream');
+  });
+  es.addEventListener('task_start', e => {
+    const d = JSON.parse(e.data);
+    addLiveEntry('▶', `Started: ${d.title} ${d.gpuTemp ? `(GPU: ${d.gpuTemp}°C)` : ''}`);
+    document.getElementById('live-event-text').textContent = `▶ ${d.title?.slice(0,40)}`;
+    _activeAgents = {}; renderAgentBar();
+  });
+  es.addEventListener('agent', e => {
+    const d = JSON.parse(e.data);
+    const icons = {research:'🔍', architect:'🏗', coder:'🧑‍💻', refactor:'♻️', tester:'🧪', debugger:'🐛', reviewer:'👁'};
+    const icon = icons[d.agent] || '🤖';
+    const status = d.status === 'done' ? `✓ score:${d.score}` : 'running…';
+    addLiveEntry(icon, `${d.agent}: ${status} — ${d.task?.slice(0,35)}`);
+    document.getElementById('live-event-text').textContent = `${icon} ${d.agent} ${status}`;
+    updateAgentStatus(d.agent, d.status, d.score);
+  });
+  es.addEventListener('pipeline_stage', e => {
+    const d = JSON.parse(e.data);
+    updateAgentStatus(d.role, d.status, d.score);
+    const STAGE_PCT = { research:10, architect:20, coder:40, reviewer:55, tester:65, debugger:75, refactor:85, security:92, docs:97 };
+    showProgress(`${d.role} running...`, STAGE_PCT[d.role] || 50, d.score);
+    appendPipelineStageToChat(d);
+  });
+  es.addEventListener('file_written', e => {
+    const d = JSON.parse(e.data);
+    addLiveEntry('📄', `Wrote ${d.file} (score ${d.score}/10)`);
+    refreshAll();
+  });
+  es.addEventListener('tests', e => {
+    const d = JSON.parse(e.data);
+    addLiveEntry(d.passed ? '✅' : '❌', `Tests ${d.passed ? 'PASSED' : 'FAILED'} — ${d.task?.slice(0,35)}`);
+  });
+  es.addEventListener('task_done', e => {
+    const d = JSON.parse(e.data);
+    addLiveEntry('🏁', `Done: ${d.title?.slice(0,40)} — score:${d.qualityScore}/10 tests:${d.testsPassed===true?'✅':d.testsPassed===false?'❌':'n/a'}`);
+    refreshAll();
+    toast(`✓ ${d.title?.slice(0,40)} — ${d.qualityScore}/10`, 'success');
+    showProgress(`✓ Task complete`, 100, d.qualityScore);
+    setTimeout(hideProgress, 3000);
+    _activeAgents = {}; renderAgentBar();
+  });
+  es.addEventListener('log', e => {
+    try {
+      const d = JSON.parse(e.data);
+      addLiveEntry('📝', d.msg || d.message || String(e.data));
+    } catch { addLiveEntry('📝', String(e.data)); }
+  });
+  es.addEventListener('gpu_update', e => {
+    try {
+      const d = JSON.parse(e.data);
+      if (d.temp != null) {
+        const tempEl = document.getElementById('gpu-temp');
+        if (tempEl) { tempEl.textContent = `${d.temp}°C`; tempEl.className = 'gval' + (d.temp >= 78 ? ' hot' : ''); }
+      }
+      if (d.memUsed != null) {
+        const vramEl = document.getElementById('gpu-vram');
+        if (vramEl) vramEl.textContent = `${d.memUsed}/${d.memTotal||4096}MB`;
+        const pct = (d.memTotal > 0) ? Math.round(d.memUsed / d.memTotal * 100) : 0;
+        const fill = document.getElementById('vram-fill');
+        const label = document.getElementById('vram-label');
+        if (fill) { fill.style.width = pct + '%'; fill.style.background = pct > 90 ? '#f44336' : pct > 75 ? '#ff9800' : '#7c6af5'; }
+        if (label) label.textContent = `${d.memUsed}/${d.memTotal||4096}MB`;
+      }
+      if (d.power != null) {
+        const pwrEl = document.getElementById('gpu-power');
+        if (pwrEl) pwrEl.textContent = `${Math.round(d.power)}W`;
+      }
+    } catch {}
+  });
+  es.addEventListener('error', e => {
+    try { const d = JSON.parse(e.data); addLiveEntry('💥', `Error: ${d.msg}`); } catch {}
+  });
+
+  es.addEventListener('auto_run_start', e => {
+    const d = JSON.parse(e.data);
+    addAutoBuildLog(`🚀 Auto-run started — ${d.total} tasks`);
+    document.getElementById('ab-status').textContent = 'Running tasks...';
+    refreshRunnerState(selectedProject?.id);
+  });
+  es.addEventListener('auto_run_task', e => {
+    const d = JSON.parse(e.data);
+    document.getElementById('ab-status').textContent = `Running: ${d.title}`;
+    document.getElementById('ab-count').textContent = `${d.done} / ${d.total}`;
+    if (d.total > 0) document.getElementById('ab-bar').style.width = `${Math.round(d.done/d.total*100)}%`;
+    addAutoBuildLog(`⟳ Task: ${d.title}`);
+  });
+  es.addEventListener('auto_run_done', e => {
+    const d = JSON.parse(e.data);
+    const scoreColor = d.score >= 8 ? '#4caf50' : d.score >= 6 ? '#2196f3' : '#ff9800';
+    addAutoBuildLog(`✅ Done: score <span style="color:${scoreColor};font-weight:700">${d.score}/10</span>`);
+    document.getElementById('ab-count').textContent = `${d.done} / ${d.total}`;
+    if (d.total > 0) document.getElementById('ab-bar').style.width = `${Math.round(d.done/d.total*100)}%`;
+    refreshRunnerState(selectedProject?.id);
+    refreshAll();
+  });
+  es.addEventListener('auto_run_fail', e => {
+    const d = JSON.parse(e.data);
+    addAutoBuildLog(`❌ Task failed (${d.consecutiveFails} consecutive fails): ${d.error||''}`);
+    refreshRunnerState(selectedProject?.id);
+  });
+  es.addEventListener('auto_run_complete', e => {
+    const d = JSON.parse(e.data);
+    document.getElementById('ab-status').textContent = `Complete! ${d.done}/${d.total} done in ${d.elapsed}s`;
+    document.getElementById('ab-bar').style.width = '100%';
+    addAutoBuildLog(`🎉 Auto-build complete! ${d.done} tasks done, ${d.failed} failed, ${d.elapsed}s`);
+    toast(`🎉 Auto-build complete! ${d.done}/${d.total} tasks done`, 'success');
+    refreshRunnerState(selectedProject?.id);
+    refreshAll();
+  });
+  es.addEventListener('auto_run_commit', e => {
+    const d = JSON.parse(e.data);
+    addAutoBuildLog(`📦 Git commit: "${d.title}" (score:${d.score}/10)`);
+  });
+  es.addEventListener('scaffold_complete', e => {
+    const d = JSON.parse(e.data);
+    addAutoBuildLog(`🏗 Scaffolded: ${(d.files||[]).join(', ')}`);
+  });
+  es.addEventListener('verify_result', e => {
+    const d = JSON.parse(e.data);
+    addAutoBuildLog(`▶ Output test: ${d.success ? '✅ PASS' : '❌ FAIL'} — ${d.command}`);
+    if (d.output) addAutoBuildLog(d.output.slice(0,200));
+  });
+  es.addEventListener('idle_improve_start', e => {
+    const d = JSON.parse(e.data);
+    addAutoBuildLog(`🔄 Idle improvement: project avg score ${d.avgScore?.toFixed(1)}/10`);
+  });
+
+  es.onerror = () => {
+    sseActive = false;
+    document.getElementById('sse-dot').classList.add('inactive');
+    document.getElementById('live-event-text').textContent = 'Live stream disconnected — retrying…';
+    const pill = document.getElementById('sse-live-pill');
+    if (pill) pill.className = 'sse-live-pill';
+    es.close();
+    _sseConnection = null;
+    setTimeout(initSSE, 5000);
+  };
+}
+function addLiveEntry(icon, text) {
+  const log = document.getElementById('sse-log');
+  if (!log) return;
+  const t = new Date().toLocaleTimeString('en', {hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const entry = document.createElement('div');
+  entry.className = 'sse-entry';
+  entry.innerHTML = `<span class="sse-icon">${icon}</span><span class="sse-text">${text}</span><span class="sse-time">${t}</span>`;
+  if (log.children[0]?.textContent?.includes('Waiting')) log.innerHTML = '';
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
+}
+function clearLiveLog() {
+  const log = document.getElementById('sse-log');
+  if (log) log.innerHTML = '<div style="color:var(--text3);font-size:11px">Cleared — waiting for pipeline events…</div>';
+}
+
+// ── GPU Status Polling ─────────────────────────────────────────────────────
+async function pollGPU() {
+  try {
+    const d = await api('GET', '/system/gpu');
+    const tempEl = document.getElementById('gpu-temp');
+    const vramEl = document.getElementById('gpu-vram');
+    const pwrEl  = document.getElementById('gpu-power');
+    if (tempEl) { tempEl.textContent = `${d.temp||0}°C`; tempEl.className = 'gval' + (d.temp >= 78 ? ' hot' : ''); }
+    if (vramEl) vramEl.textContent = `${d.memUsed||0}/${d.memTotal||4096}MB`;
+    if (pwrEl)  pwrEl.textContent  = `${Math.round(d.power||0)}W`;
+  } catch {}
+}
+
+// ── Model Picker ───────────────────────────────────────────────────────────
+async function loadModels() {
+  try {
+    const d = await api('GET', '/models');
+    const sel = document.getElementById('model-picker');
+    if (!sel) return;
+    sel.innerHTML = d.models.map(m => {
+      const active = m.name.startsWith(d.current) || d.current.startsWith(m.name.split(':')[0]);
+      return `<option value="${m.name}" ${active?'selected':''}>${m.name} (${Math.round(m.sizeMB/1024*10)/10}GB)</option>`;
+    }).join('');
+  } catch { document.getElementById('model-picker').innerHTML = '<option value="phi3.5-forge:latest">phi3.5-forge</option>'; }
+}
+async function switchModel(modelName) {
+  if (!modelName) return;
+  if (!selectedProject) {
+    toast('Select a project first to switch its model', 'error');
+    // Reset picker back to current value
+    loadModels();
+    return;
+  }
+  await api('POST', `/project/${selectedProject.id}/set-model`, { model: modelName });
+  toast(`Model switched to ${modelName}`, 'success');
+}
+
+// ── Utilities ──────────────────────────────────────────────────────────────
+async function api(method, url, body) {
+  const r = await fetch(API + url, {
+    method, headers: {'Content-Type':'application/json'},
+    body: body ? JSON.stringify(body) : undefined
+  });
+  return r.json();
+}
+function toast(msg, type='info') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+function scoreColor(s) {
+  if (!s && s !== 0) return 'color:var(--text3)';
+  if (s >= 8) return 'color:var(--green)';
+  if (s >= 6) return 'color:var(--yellow)';
+  return 'color:var(--red)';
+}
+function scoreClass(s) {
+  if (!s && s !== 0) return '';
+  if (s >= 8) return 'score-high';
+  if (s >= 6) return 'score-mid';
+  return 'score-low';
+}
+function badgeClass(status) {
+  if (status === 'done') return 'badge-done';
+  if (status === 'in_progress') return 'badge-running';
+  if (status === 'pending') return 'badge-pending';
+  return 'badge-failed';
+}
+function badgeLabel(status) {
+  if (status === 'in_progress') return '⚡ running';
+  return status;
+}
+function elapsed(ts) {
+  if (!ts) return '';
+  const diff = Date.now() - new Date(ts).getTime();
+  if (diff < 60000) return `${Math.round(diff/1000)}s ago`;
+  if (diff < 3600000) return `${Math.round(diff/60000)}m ago`;
+  return `${Math.round(diff/3600000)}h ago`;
+}
+
+// ── Data loading ───────────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    stats = await api('GET', '/stats');
+    document.getElementById('h-done').textContent = stats.tasks?.done ?? '—';
+    document.getElementById('h-pending').textContent = stats.tasks?.pending ?? '—';
+    document.getElementById('h-score').textContent = stats.avgQualityScore !== 'N/A' ? stats.avgQualityScore + '/10' : '—';
+    // Server status
+    const pill = document.getElementById('server-status');
+    pill.className = 'status-pill ok';
+    pill.innerHTML = '<div class="dot"></div><span>Connected</span>';
+  } catch {
+    const pill = document.getElementById('server-status');
+    pill.className = 'status-pill err';
+    pill.innerHTML = '<div class="dot"></div><span>Offline</span>';
+  }
+}
+
+async function loadProjects() {
+  try {
+    projects = await api('GET', '/projects');
+    const el = document.getElementById('proj-list');
+    if (!projects.length) { el.innerHTML = '<div class="empty" style="padding:20px;font-size:12px;text-align:center"><div class="empty-icon">🔨</div><div class="empty-text" style="margin-bottom:12px">No projects yet</div><button class="btn btn-primary" style="font-size:12px" onclick="openWizard()">+ Create First Project</button></div>'; return; }
+    el.innerHTML = projects.map(p => {
+      const pct = p.task_total > 0 ? Math.round((p.task_done/p.task_total)*100) : 0;
+      const isActive = selectedProject?.id === p.id;
+      const projectPath = `/home/mrnova420/forge/projects/${p.id}`;
+      return `<div class="proj-item${isActive?' active':''}" onclick="selectProject('${p.id}')">
+        <div class="proj-name">${p.name}</div>
+        <div class="proj-meta">${p.task_done||0}/${p.task_total||0} tasks · ${p.stack||'node'}</div>
+        <div style="font-size:10px;color:#444;margin-top:4px;display:flex;align-items:center;gap:6px;">
+          <span style="font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;" title="${projectPath}">${projectPath}</span>
+          <button onclick="navigator.clipboard.writeText('${projectPath}').then(()=>showToast('Path copied!'))" style="background:none;border:none;color:#555;cursor:pointer;font-size:10px;padding:0;" title="Copy path">📋</button>
+          <button onclick="openInWorkspace('${p.id}')" style="background:none;border:none;color:#555;cursor:pointer;font-size:10px;padding:0;" title="Set as active workspace">📁</button>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+        <div style="display:flex;gap:4px;margin-top:8px" onclick="event.stopPropagation()">
+          <button class="task-action-btn" style="font-size:10px;flex:1" onclick="quickProjectAction('${p.id}','run')" title="Run full dev cycle">▶ Run</button>
+          <button class="task-action-btn" style="font-size:10px;flex:1" onclick="quickProjectAction('${p.id}','health')" title="Check project health">🏥</button>
+          <button class="task-action-btn" style="font-size:10px;flex:1" onclick="quickProjectAction('${p.id}','backup')" title="Backup project">📦</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) { console.error(e); }
+  if (selectedProject) refreshRunnerState(selectedProject.id);
+}
+
+async function loadTasks() {
+  try {
+    tasks = await api('GET', '/tasks/recent?limit=50');
+  } catch(e) { console.error(e); }
+}
+
+async function loadRunnerStatus() {
+  try {
+    const r = await api('GET', '/runner/status');
+    const el = document.getElementById('runner-header');
+    if (r.running) {
+      el.className = 'runner-indicator on';
+      el.innerHTML = '<div class="dot"></div><span>Runner active</span>';
+    } else {
+      el.className = 'runner-indicator off';
+      el.innerHTML = '<div class="dot"></div><span>Runner idle</span>';
+    }
+  } catch {}
+}
+
+let _runnerStateInterval = null;
+let _lastAutoRunStatus = null;
+
+async function refreshRunnerState(projectId) {
+  if (!projectId) return;
+  try {
+    const s = await api('GET', `/project/${projectId}/auto-run/status`);
+    _lastAutoRunStatus = s;
+    const el = document.getElementById('runner-header');
+    if (!el) return;
+    if (s.running) {
+      el.className = 'runner-indicator on';
+      el.innerHTML = `<div class="dot"></div><span>⚡ Running — ${s.inProgress || 0} active, ${s.pending || 0} pending</span>`;
+    } else {
+      el.className = 'runner-indicator off';
+      el.innerHTML = `<div class="dot"></div><span>Runner idle — ${s.done || 0} done, ${s.pending || 0} pending</span>`;
+    }
+  } catch {}
+}
+
+async function refreshAll() {
+  await Promise.all([loadStats(), loadProjects(), loadTasks(), loadRunnerStatus()]);
+  renderView();
+}
+
+// ── Views ──────────────────────────────────────────────────────────────────
+function showView(view) {
+  currentView = view;
+  ['overview','tasks','quality'].forEach(v => {
+    document.getElementById('nav-'+v)?.classList.toggle('active', v === view);
+  });
+  renderView();
+}
+
+function renderView() {
+  const ca = document.getElementById('content-area');
+  if (currentView === 'overview') ca.innerHTML = renderOverview();
+  else if (currentView === 'tasks') ca.innerHTML = renderTasksView();
+  else if (currentView === 'quality') ca.innerHTML = renderQualityView();
+  else if (currentView === 'project' && selectedProject) ca.innerHTML = renderProjectView();
+}
+
+function renderOverview() {
+  const t = stats.tasks || {};
+  const running = t.in_progress || 0;
+  return `
+    <div id="build-hero" style="
+      background: linear-gradient(135deg, #1e1e2e 0%, #181825 100%);
+      border: 1px solid #6366f1;
+      border-radius: 16px;
+      padding: 28px 32px;
+      margin-bottom: 24px;
+      box-shadow: 0 0 40px rgba(99,102,241,0.15);
+    ">
+      <div style="font-size:22px; font-weight:800; margin-bottom:6px; background:linear-gradient(135deg,#6366f1,#a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">
+        ⚡ What do you want to build?
+      </div>
+      <div style="color:#6c7086; font-size:13px; margin-bottom:16px;">
+        Describe any app, tool, API, or script — Forge builds it autonomously
+      </div>
+      <div style="display:flex; gap:10px;">
+        <input type="text" id="hero-build-input"
+          placeholder='e.g. "a REST API for managing todos with auth" or "a CLI tool that converts CSV to JSON"'
+          style="flex:1; background:#313244; border:1px solid #45475a; border-radius:10px; padding:12px 16px; color:#cdd6f4; font-size:14px; outline:none;"
+          onkeydown="if(event.key==='Enter')heroBuild()"
+          onfocus="this.style.borderColor='#6366f1'"
+          onblur="this.style.borderColor='#45475a'">
+        <button onclick="heroBuild()" style="
+          background:linear-gradient(135deg,#6366f1,#8b5cf6);
+          border:none; border-radius:10px; padding:12px 24px;
+          color:#fff; font-size:14px; font-weight:700; cursor:pointer;
+          white-space:nowrap;
+        ">⚡ Build It</button>
+      </div>
+      <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+        ${[
+          'REST API with auth',
+          'CLI todo manager',
+          'File organizer script',
+          'Discord bot',
+          'Web scraper',
+          'Password generator'
+        ].map(s => `<span onclick="document.getElementById('hero-build-input').value='${s}'" style="background:#313244;border:1px solid #45475a;border-radius:20px;padding:4px 12px;font-size:11px;color:#a6adc8;cursor:pointer;">${s}</span>`).join('')}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="stats-grid">
+        <div class="stat-box"><div class="stat-num accent">${stats.projects||0}</div><div class="stat-lbl">Projects</div></div>
+        <div class="stat-box"><div class="stat-num green">${t.done||0}</div><div class="stat-lbl">Tasks Done</div></div>
+        <div class="stat-box"><div class="stat-num${running?' yellow':''}">${running}</div><div class="stat-lbl">Running Now</div></div>
+        <div class="stat-box"><div class="stat-num blue">${t.pending||0}</div><div class="stat-lbl">Pending</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🏃 Auto-Runner Control</div>
+      <div class="runner-panel">
+        <div id="runner-card-status" class="runner-indicator off"><div class="dot"></div><span>Checking...</span></div>
+        <button class="btn btn-success" onclick="startRunner()">▶ Start Runner</button>
+        <button class="btn btn-danger" onclick="stopRunner()">⏹ Stop Runner</button>
+        <button class="btn btn-primary" onclick="stepTask()">⚡ Run One Task</button>
+        <button class="btn btn-ghost" onclick="runImprove()">🧠 Self-Improve</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-header">
+        <div class="section-title">Recent Tasks</div>
+        <span class="badge-count">${tasks.length} shown</span>
+      </div>
+      <div class="task-list">
+        ${tasks.slice(0,15).map(t => renderTaskRow(t)).join('')}
+        ${!tasks.length ? '<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">No tasks yet — create a project!</div></div>' : ''}
+      </div>
+    </div>`;
+}
+
+function formatDuration(ms) {
+  if (!ms || ms <= 0) return '';
+  const s = Math.round(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60), rs = s % 60;
+  return `${m}m${rs > 0 ? rs + 's' : ''}`;
+}
+
+function renderTaskRow(t) {
+  const score = t.quality_score != null
+    ? `<div class="task-score ${scoreClass(t.quality_score)}">${t.quality_score}/10</div>`
+    : `<div class="task-score" style="color:var(--text3)">—</div>`;
+  const dur = t.duration_ms ? `<span class="time-badge">${formatDuration(t.duration_ms)}</span>` : '';
+  const isRunning = t.status === 'in_progress';
+  const actions = t.status === 'done'
+    ? `<div class="task-actions">
+        <button class="task-action-btn" onclick="event.stopPropagation();redoTask('${t.id}')" title="Re-run this task">↺</button>
+       </div>`
+    : t.status === 'pending' || t.status === 'failed'
+    ? `<div class="task-actions">
+        <button class="task-action-btn" onclick="event.stopPropagation();restartTask('${t.id}')" title="Reset and retry">⟳</button>
+       </div>`
+    : '';
+  return `<div class="task-row ${isRunning ? 'running' : ''}" onclick="openTaskDetail('${t.id}')" style="cursor:pointer">
+    <span class="task-badge ${badgeClass(t.status)}">${badgeLabel(t.status)}</span>
+    <span class="task-title" title="${(t.title||'').replace(/"/g,'&quot;')}">${t.title || '—'}</span>
+    <span class="task-epic" title="${t.epic_title||''}">${(t.project_name||t.epic_title||'').slice(0,20)}</span>
+    ${dur}
+    ${score}
+    ${actions}
+  </div>`;
+}
+
+function renderTasksView() {
+  const groups = { in_progress: [], pending: [], done: [] };
+  tasks.forEach(t => { (groups[t.status] || groups.done).push(t); });
+  return `
+    <div class="card">
+      <div class="section-header">
+        <div class="section-title">All Tasks</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="badge-count">${tasks.length} total</span>
+          <button class="btn btn-primary" id="run-next-btn" onclick="runNextTask()" style="font-size:12px;padding:5px 14px;display:flex;align-items:center;gap:6px">▶ Run Next Task</button>
+        </div>
+      </div>
+      ${groups.in_progress.length ? `<div class="card-title">⚡ Running</div><div class="task-list" style="margin-bottom:16px">${groups.in_progress.map(renderTaskRow).join('')}</div>` : ''}
+      ${groups.pending.length ? `<div class="card-title">⏳ Pending (${groups.pending.length})</div><div class="task-list" style="margin-bottom:16px">${groups.pending.map(renderTaskRow).join('')}</div>` : ''}
+      ${groups.done.length ? `<div class="card-title">✅ Done (${groups.done.length})</div><div class="task-list">${groups.done.map(renderTaskRow).join('')}</div>` : ''}
+      ${!tasks.length ? '<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">No tasks yet</div></div>' : ''}
+    </div>`;
+}
+
+function renderQualityView() {
+  const scored = tasks.filter(t => t.quality_score != null);
+  const avg = scored.length ? (scored.reduce((a,t)=>a+t.quality_score,0)/scored.length).toFixed(1) : '—';
+  const dist = [0,0,0,0,0,0,0,0,0,0]; // 1-10
+  scored.forEach(t => { if (t.quality_score >= 1 && t.quality_score <= 10) dist[t.quality_score-1]++; });
+  const topTasks = [...scored].sort((a,b) => b.quality_score-a.quality_score).slice(0,5);
+  const botTasks = [...scored].sort((a,b) => a.quality_score-b.quality_score).slice(0,3);
+  return `
+    <div class="card">
+      <div class="card-title">📈 Quality Overview</div>
+      <div class="stats-grid">
+        <div class="stat-box"><div class="stat-num accent">${avg}</div><div class="stat-lbl">Average Score</div></div>
+        <div class="stat-box"><div class="stat-num green">${scored.filter(t=>t.quality_score>=8).length}</div><div class="stat-lbl">High Quality (8+)</div></div>
+        <div class="stat-box"><div class="stat-num yellow">${scored.filter(t=>t.quality_score>=6&&t.quality_score<8).length}</div><div class="stat-lbl">Good (6-7)</div></div>
+        <div class="stat-box"><div class="stat-num${scored.filter(t=>t.quality_score<6).length>0?' red':''}">${scored.filter(t=>t.quality_score<6).length}</div><div class="stat-lbl">Needs Work (&lt;6)</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📊 Score Distribution</div>
+      ${[10,9,8,7,6,5,4,3,2,1].map(s => {
+        const cnt = dist[s-1];
+        const pct = scored.length ? Math.round((cnt/scored.length)*100) : 0;
+        return `<div class="quality-bar">
+          <div class="quality-label">${s}/10</div>
+          <div class="quality-track"><div class="quality-fill" style="width:${pct}%"></div></div>
+          <div class="quality-val" style="${scoreColor(s)}">${cnt}</div>
+        </div>`;
+      }).join('')}
+    </div>
+    ${topTasks.length ? `<div class="card">
+      <div class="card-title">🏆 Top Scoring Tasks</div>
+      <div class="task-list">${topTasks.map(renderTaskRow).join('')}</div>
+    </div>` : ''}
+    ${botTasks.length ? `<div class="card">
+      <div class="card-title">🔧 Tasks to Improve</div>
+      <div class="task-list">${botTasks.map(renderTaskRow).join('')}</div>
+    </div>` : ''}`;
+}
+
+function renderTaskList(taskItems) {
+  if (!taskItems || taskItems.length === 0) return '<div class="empty" style="padding:20px">No tasks yet</div>';
+  return taskItems.map(renderTaskRow).join('');
+}
+
+function renderProjectView() {
+  if (!selectedProject) return '<div class="empty"><div class="empty-icon">📁</div><div class="empty-text">Select a project</div></div>';
+  const p = selectedProject;
+  const pct = p.task_total > 0 ? Math.round((p.task_done/p.task_total)*100) : 0;
+  const projTasks = tasks.filter(t => t.project_id === p.id || t.project_name === p.name);
+  const totalTime = p.total_duration_ms ? formatDuration(p.total_duration_ms) : null;
+  const avgScore = p.avg_score ? parseFloat(p.avg_score).toFixed(1) : '—';
+  const pendingCount = projTasks.filter(t => t.status === 'pending').length;
+  const resumeBtn = (pendingCount > 0 && !_lastAutoRunStatus?.running)
+    ? `<div style="background:linear-gradient(135deg,#f59e0b22,#f59e0b11);border:1px solid #f59e0b44;border-radius:10px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;">
+         <span style="color:#f59e0b;font-size:13px;">⚡ ${pendingCount} task${pendingCount>1?'s':''} ready to build</span>
+         <button class="btn btn-primary" onclick="startAutoBuild('${p.id}')" style="background:#f59e0b;border:none;padding:6px 16px;border-radius:6px;font-size:12px;cursor:pointer;">▶ Start Building</button>
+       </div>`
+    : '';
+  return `
+    ${resumeBtn}
+    <div class="card">
+      <div class="section-header">
+        <div>
+          <div class="section-title">${p.name}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:4px">${p.description||''}</div>
+        </div>
+        <span style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:12px">${p.stack||'node'}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0">
+        <div class="stat-box"><div class="stat-num accent">${avgScore}</div><div class="stat-lbl">Avg Quality</div></div>
+        <div class="stat-box"><div class="stat-num green">${p.task_done||0}/${p.task_total||0}</div><div class="stat-lbl">Tasks Done</div></div>
+        <div class="stat-box"><div class="stat-num blue">${totalTime||'—'}</div><div class="stat-lbl">Dev Time</div></div>
+      </div>
+      <div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:5px">
+          <span>Progress</span><span>${pct}%</span>
+        </div>
+        <div class="progress-bar" style="height:6px"><div class="progress-fill" style="width:${pct}%"></div></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="startRunner()">▶ Run Tasks</button>
+        <button class="btn btn-primary" onclick="startAutoBuild('${p.id}')" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;font-size:13px;padding:7px 18px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:7px;">⚡ Auto-Build</button>
+        <button class="btn btn-outline" onclick="verifyOutput('${p.id}')" style="font-size:12px;padding:5px 14px;">▶ Run & Test</button>
+        <button class="btn btn-outline" onclick="scaffoldCode('${p.id}')" style="font-size:12px;padding:5px 14px;">🏗 Scaffold</button>
+        <button class="btn btn-ghost" onclick="browseFiles('${p.id}')">📁 Files</button>
+        <button class="btn btn-ghost" onclick="redoLowQuality('${p.id}')">↺ Redo &lt;7</button>
+        <button class="btn btn-ghost" onclick="runImprove()">🧠 Improve</button>
+        <button class="btn btn-ghost" onclick="generateScripts('${p.id}')">📋 Gen Scripts</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Tasks <span class="badge-count">${projTasks.length}</span></div>
+      <div class="task-list" id="task-list-container">
+        ${renderTaskList(projTasks)}
+      </div>
+    </div>`;
+}
+
+// ── Actions ────────────────────────────────────────────────────────────────
+async function selectProject(id) {
+  try {
+    // Stop auto-run for previous project if switching
+    if (selectedProject && selectedProject.id !== id && _autoBuildProject === selectedProject.id) {
+      try { await api('POST', `/project/${selectedProject.id}/auto-run/stop`); } catch {}
+      if (_runnerPollInterval) { clearInterval(_runnerPollInterval); _runnerPollInterval = null; }
+    }
+    const detail = await api('GET', `/projects/${id}`);
+    selectedProject = { ...projects.find(p=>p.id===id), ...detail };
+    currentView = 'project';
+    document.querySelectorAll('.proj-item').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.proj-item').forEach(el => {
+      if (el.onclick?.toString().includes(id)) el.classList.add('active');
+    });
+    renderView();
+    browseFiles(id);
+    loadChatHistory(id);
+    renderChatSuggestions(id);
+    await refreshRunnerState(id);
+    if (_runnerStateInterval) clearInterval(_runnerStateInterval);
+    _runnerStateInterval = setInterval(() => refreshRunnerState(selectedProject?.id), 8000);
+  } catch(e) { toast('Failed to load project', 'error'); }
+}
+
+async function startRunner() {
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    const r = await api('POST', '/runner/start');
+    if (r.started) toast('Auto-runner started!', 'success');
+    else toast(r.message || 'Already running', 'info');
+    await loadRunnerStatus(); refreshAll();
+  } catch { toast('Failed to start runner', 'error'); }
+  btn.disabled = false; btn.textContent = '▶ Start Runner';
+}
+
+async function stopRunner() {
+  try {
+    const r = await api('POST', '/runner/stop');
+    if (r.stopped) toast('Runner stopped', 'info');
+    else toast('Runner not running', 'info');
+    await loadRunnerStatus(); refreshAll();
+  } catch { toast('Failed to stop runner', 'error'); }
+}
+
+async function stepTask() {
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = '⏳ Running...';
+  const toastMsg = selectedProject
+    ? `Running next task for "${selectedProject.name}" — this takes 5-10 min...`
+    : 'Running next task — this takes 5-10 min...';
+  toast(toastMsg, 'info');
+  try {
+    const payload = selectedProject ? { projectId: selectedProject.id } : {};
+    const r = await api('POST', '/task/run-next', payload);
+    if (r.message) toast(r.message, 'info');
+    else if (r.taskId) {
+      toast(`✅ Task done! Score: ${r.qualityScore}/10`, 'success');
+      await refreshAll();
+    } else if (r.error) toast('Error: ' + r.error, 'error');
+  } catch { toast('Task failed', 'error'); }
+  btn.disabled = false; btn.textContent = '⚡ Run One Task';
+}
+
+async function runImprove() {
+  toast('Running self-improvement cycle...', 'info');
+  try {
+    const r = await api('POST', '/improve');
+    toast('Self-improvement complete!', 'success');
+    console.log('Improve result:', r);
+  } catch { toast('Improve failed', 'error'); }
+}
+
+async function generateScripts(projectId) {
+  const id = projectId || selectedProject?.id;
+  if (!id) return toast('Select a project first', 'error');
+  toast('Generating README, package.json & run script...', 'info');
+  try {
+    const r = await api('POST', `/project/${id}/generate-scripts`);
+    toast(`Generated: ${(r.written||[]).join(', ')}`, 'success');
+    browseFiles(id);
+  } catch(e) { toast('Script generation failed: ' + e.message, 'error'); }
+}
+
+async function browseFiles(projectId) {
+  switchTab('files');
+  currentBrowseProject = projectId;
+  const panel = document.getElementById('files-panel');
+  panel.innerHTML = '<div style="padding:12px"><div class="spinner"></div></div>';
+  try {
+    const r = await api('GET', `/projects/${projectId}/files`);
+    if (!r.files?.length) {
+      panel.innerHTML = '<div class="chat-msg system" style="margin:12px">No files generated yet — run some tasks first.</div>';
+      return;
+    }
+    const grouped = {};
+    r.files.forEach(f => {
+      const dir = f.path.includes('/') ? f.path.split('/')[0] : 'root';
+      if (!grouped[dir]) grouped[dir] = [];
+      grouped[dir].push(f);
+    });
+    let html = '<div style="padding:10px">';
+    for (const [dir, files] of Object.entries(grouped)) {
+      html += `<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:8px 4px 4px">${dir}/</div>`;
+      html += '<div class="file-list">';
+      files.forEach(f => {
+        const name = f.path.split('/').pop();
+        const size = f.size < 1024 ? f.size + 'B' : Math.round(f.size/1024) + 'KB';
+        // Use new /project/:id/file API for viewing with project context
+        html += `<div class="file-item" onclick="viewFileByProject('${projectId}','${f.path}')" title="${f.path}">
+          <span>📄 ${name}</span><span style="float:right;color:var(--text3);font-size:10px">${size}</span>
+        </div>`;
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+    panel.innerHTML = html;
+  } catch(e) { panel.innerHTML = `<div class="chat-msg system" style="margin:12px">Error: ${e.message}</div>`; }
+}
+
+async function viewFileByProject(projectId, filePath) {
+  const panel = document.getElementById('files-panel');
+  const origHtml = panel.innerHTML;
+  try {
+    const r = await api('GET', `/project/${projectId}/file?path=${encodeURIComponent(filePath)}`);
+    const filename = filePath.split('/').pop();    const highlighted = highlightCode(r.content, filename);
+    panel.innerHTML = `<div style="padding:12px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <button class="btn btn-ghost" style="font-size:11px" onclick="browseFiles('${projectId}')">← Back</button>
+        <span style="font-size:12px;font-weight:600;color:var(--text2)">${filePath}</span>
+        <span style="font-size:10px;color:var(--text3);margin-left:auto">${r.lines} lines</span>
+        <button class="btn btn-primary" style="font-size:11px" onclick="openFileEditor('${projectId}','${filePath}')">✏️ Edit</button>
+      </div>
+      <pre style="font-size:11px;line-height:1.6;overflow-x:auto;background:var(--bg3);padding:10px;border-radius:6px;white-space:pre-wrap;word-break:break-all;color:var(--text)">${highlighted}</pre>
+    </div>`;
+  } catch(e) {
+    panel.innerHTML = origHtml;
+    toast('Error reading file: ' + e.message, 'error');
+  }
+}
+
+async function viewFile(fullPath, el) {
+  document.querySelectorAll('.file-item').forEach(e => e.classList.remove('active'));
+  el?.classList.add('active');
+  const area = document.getElementById('file-content-area');
+  if (!area) return;
+  area.innerHTML = '<div class="spinner" style="padding:8px"></div>';
+  try {
+    const r = await api('GET', `/file?path=${encodeURIComponent(fullPath)}`);
+    if (r.ok && r.content) {
+      const escaped = r.content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const lines = r.content.split('\n').length;
+      const fname = fullPath.split('/').pop();
+      area.innerHTML = `<div style="font-size:11px;color:var(--text3);padding:6px 0;display:flex;justify-content:space-between">
+        <span>📄 ${fname}</span><span>${lines} lines</span>
+      </div><div class="code-box" style="max-height:60vh">${escaped}</div>`;
+    } else area.innerHTML = '<div style="padding:8px;font-size:12px;color:var(--text3)">Could not read file.</div>';
+  } catch { area.innerHTML = '<div style="padding:8px;font-size:12px;color:var(--red)">Error reading file.</div>'; }
+}
+
+function showTaskDetail(id) {
+  openTaskDetail(id);
+}
+
+async function openTaskDetail(taskId) {
+  const r = await fetch(`${API}/task/${taskId}`);
+  const task = await r.json();
+  document.getElementById('task-detail-title').textContent = task.title || task.id;
+  const score = task.quality_score || 0;
+  const scoreClass = score >= 8 ? 'score-high' : score >= 6 ? 'score-med' : 'score-low';
+  document.getElementById('task-detail-meta').innerHTML =
+    `Agent: <b>${task.assigned_agent||'—'}</b> &nbsp;|&nbsp;
+     Score: <span class="score-badge ${scoreClass}">${score}/10</span> &nbsp;|&nbsp;
+     Attempts: <b>${task.attempts||1}</b> &nbsp;|&nbsp;
+     Status: <b>${task.status}</b>`;
+
+  let pipelineHtml = '';
+  if (task.pipeline_log) {
+    try {
+      const log = typeof task.pipeline_log === 'string' ? JSON.parse(task.pipeline_log) : task.pipeline_log;
+      for (const [stage, data] of Object.entries(log)) {
+        const stageScore = data.score ? `<span class="score-badge ${data.score>=8?'score-high':data.score>=6?'score-med':'score-low'}">${data.score}/10</span>` : '';
+        pipelineHtml += `<div class="pipeline-stage"><h4>${stage} ${stageScore}</h4><pre>${(data.output||data.result||JSON.stringify(data)).substring(0,800)}</pre></div>`;
+      }
+    } catch(e) {
+      pipelineHtml = `<div class="pipeline-stage"><pre>${String(task.pipeline_log).substring(0,2000)}</pre></div>`;
+    }
+  }
+  if (task.result) {
+    pipelineHtml += `<div class="pipeline-stage"><h4>Final Output</h4><pre>${String(task.result).substring(0,1200)}</pre></div>`;
+  }
+  document.getElementById('task-detail-pipeline').innerHTML = pipelineHtml || '<p style="color:#555">No pipeline log available</p>';
+  document.getElementById('task-detail-overlay').style.display = 'block';
+}
+function closeTaskDetail() { document.getElementById('task-detail-overlay').style.display = 'none'; }
+// Close task detail on overlay click
+document.getElementById('task-detail-overlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeTaskDetail(); });
+
+async function restartTask(id) {
+  try {
+    const r = await api('POST', `/task/${id}/restart`);
+    toast(r.message || 'Task reset to pending', 'info');
+    await refreshAll();
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
+async function redoTask(id) {
+  try {
+    const r = await api('POST', `/task/${id}/redo`);
+    toast(r.message || 'Task queued for redo', 'success');
+    await refreshAll();
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
+async function redoLowQuality(projectId) {
+  try {
+    const r = await api('POST', `/project/${projectId}/redo-low-quality`, { minScore: 7 });
+    toast(r.message || 'Low-quality tasks requeued', 'success');
+    await refreshAll();
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
+// ── Agent dropdown ─────────────────────────────────────────────────────────
+function toggleAgentDropdown(e) {
+  e?.stopPropagation();
+  const menu = document.getElementById('agent-dropdown-menu');
+  const btn = document.getElementById('agent-dropdown-btn');
+  const arrow = document.getElementById('agent-arrow');
+  const isOpen = menu.classList.contains('open');
+  menu.classList.toggle('open', !isOpen);
+  btn.classList.toggle('open', !isOpen);
+  arrow.textContent = isOpen ? '▲' : '▼';
+}
+
+function selectAgent(val, label) {
+  selectedAgentRole = val;
+  document.getElementById('agent-selected-label').textContent = label;
+  document.querySelectorAll('.agent-opt').forEach(el => el.classList.toggle('selected', el.dataset.val === val));
+  document.getElementById('agent-dropdown-menu').classList.remove('open');
+  document.getElementById('agent-dropdown-btn').classList.remove('open');
+  document.getElementById('agent-arrow').textContent = '▲';
+  document.getElementById('chat-input').focus();
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', e => {
+  if (!e.target.closest('#agent-dropdown')) {
+    document.getElementById('agent-dropdown-menu')?.classList.remove('open');
+    document.getElementById('agent-dropdown-btn')?.classList.remove('open');
+    if (document.getElementById('agent-arrow')) document.getElementById('agent-arrow').textContent = '▲';
+  }
+});
+
+function setSearchSource(src) {
+  currentSearchSource = src;
+  document.querySelectorAll('#panel-search .btn-ghost').forEach(b => {
+    b.style.borderColor = '';
+    b.style.color = '';
+  });
+  event?.target?.style && (event.target.style.borderColor = 'var(--accent)', event.target.style.color = 'var(--accent)');
+}
+// ── Syntax Highlighting ─────────────────────────────────────────────────────
+function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;'); }
+function highlightCode(code, filename) {
+  const ext = (filename||'').split('.').pop().toLowerCase();
+  if (!['js','ts','json','sh','md'].includes(ext)) return escapeHtml(code);
+  let h = escapeHtml(code);
+  if (ext === 'json') {
+    h = h.replace(/(&quot;[^&]*&quot;)\s*:/g, '<span class="code-keyword">$1</span>:')
+         .replace(/:\s*(&quot;[^&]*&quot;)/g, ': <span class="code-string">$1</span>');
+    return h;
+  }
+  // JS/TS/SH
+  h = h.replace(/(\/\/[^\n]*)/g, '<span class="code-comment">$1</span>');
+  h = h.replace(/\b(const|let|var|function|class|return|if|else|for|while|async|await|require|module|exports|import|from|new|this|try|catch|throw)\b/g, '<span class="code-keyword">$1</span>');
+  h = h.replace(/(&quot;[^&]*&quot;|&#x27;[^&]*&#x27;|`[^`]*`)/g, '<span class="code-string">$1</span>');
+  h = h.replace(/\b(\d+)\b/g, '<span class="code-number">$1</span>');
+  return h;
+}
+
+// ── Chat History Persistence ────────────────────────────────────────────────
+function getChatHistory(projectId) {
+  const key = projectId ? `forge_chat_${projectId}` : 'forge_chat';
+  try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; }
+}
+
+function saveChatMessage(projectId, role, content) {
+  const key = projectId ? `forge_chat_${projectId}` : 'forge_chat';
+  const history = getChatHistory(projectId);
+  history.push({ role, content, ts: Date.now() });
+  if (history.length > 50) history.splice(0, history.length - 50);
+  localStorage.setItem(key, JSON.stringify(history));
+}
+
+function loadChatHistory(projectId) {
+  const history = getChatHistory(projectId);
+  const messagesEl = document.getElementById('chat-messages');
+  if (!messagesEl) return;
+  messagesEl.innerHTML = '';
+  if (!history.length) {
+    messagesEl.innerHTML = '<div class="chat-msg system">Ask any agent a question or request code.</div>';
+    return;
+  }
+  for (const msg of history) {
+    const div = document.createElement('div');
+    div.className = `chat-msg ${msg.role === 'user' ? 'user-msg' : 'assist-msg'}`;
+    div.innerHTML = `<div class="msg-avatar">${msg.role === 'user' ? '👤' : '⚡'}</div><div class="msg-content">${escapeHtml(msg.content)}</div>`;
+    messagesEl.appendChild(div);
+  }
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function saveChatHistory() {
+  // Legacy: save current DOM messages to project-scoped key
+  const projectId = selectedProject?.id || null;
+  const key = projectId ? `forge_chat_${projectId}` : 'forge_chat';
+  const msgs = document.getElementById('chat-messages');
+  const items = [];
+  msgs.querySelectorAll('.chat-msg').forEach(el => {
+    items.push({ className: el.className, html: el.innerHTML });
+  });
+  localStorage.setItem(key, JSON.stringify(items.slice(-50)));
+}
+
+function restoreChatHistory() {
+  loadChatHistory(selectedProject?.id || null);
+}
+
+function clearChatHistory() {
+  const projectId = selectedProject?.id || null;
+  const key = projectId ? `forge_chat_${projectId}` : 'forge_chat';
+  localStorage.removeItem(key);
+  const msgs = document.getElementById('chat-messages');
+  msgs.innerHTML = '<div class="chat-msg system">Ask any agent a question or request code.</div>';
+}
+
+// ── Agent Chat ─────────────────────────────────────────────────────────────
+function appendChatMessage(role, text) {
+  const msgs = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  const isUser = role === 'user';
+  div.className = `chat-msg ${isUser ? 'user-msg' : 'assist-msg'}`;
+  div.innerHTML = `<div class="msg-avatar">${isUser ? '👤' : '⚡'}</div><div class="msg-content">${escapeHtml(text)}</div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  saveChatMessage(selectedProject?.id || null, role === 'user' ? 'user' : 'assistant', text);
+}
+
+const COMMAND_PATTERNS = [
+  { pattern: /^(add|create|implement|build)\s+(.+)/i, action: 'add_task' },
+  { pattern: /^fix\s+(.+)/i, action: 'fix_task' },
+  { pattern: /^(make|convert)\s+(.+)\s+production.?ready/i, action: 'production_ready' },
+  { pattern: /^(run|execute)\s+tests?/i, action: 'run_tests' },
+  { pattern: /^analyze\s+(.+)/i, action: 'analyze_project' },
+  { pattern: /^standup/i, action: 'standup' },
+  { pattern: /^(deploy|dockerfile)/i, action: 'deploy_prep' },
+  { pattern: /^backup/i, action: 'backup' },
+];
+
+async function parseAndExecuteCommand(message, projectId) {
+  for (const { pattern, action } of COMMAND_PATTERNS) {
+    const match = message.match(pattern);
+    if (!match) continue;
+
+    if (action === 'add_task' && projectId) {
+      const taskDesc = match[2] || match[1];
+      const r = await fetch(`${API}/project/${projectId}/expand`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hint: taskDesc })
+      });
+      const d = await r.json();
+      return `🔨 Created task: "${taskDesc}" — ${d.tasksAdded || 0} new tasks added to queue`;
+    }
+    if (action === 'fix_task' && projectId) {
+      const r = await fetch(`${API}/project/${projectId}/retry-low-quality`, { method: 'POST' });
+      const d = await r.json();
+      return `🔧 Retrying ${d.reset || 0} low-quality tasks for fixing`;
+    }
+    if (action === 'production_ready' && projectId) {
+      await fetch(`${API}/project/${projectId}/deploy-prep`, { method: 'POST' });
+      return `📦 Generated Dockerfile, docker-compose.yml, .env.example, DEPLOY.md`;
+    }
+    if (action === 'run_tests' && projectId) {
+      const r = await fetch(`${API}/project/${projectId}/run-tests-v2`, { method: 'POST' });
+      const d = await r.json();
+      return `🧪 Tests: ${d.summary?.totalPassed||0} passed, ${d.summary?.totalFailed||0} failed`;
+    }
+    if (action === 'standup') {
+      const r = await fetch(`${API}/standup`);
+      const d = await r.json();
+      return d.standup || 'No standup data yet';
+    }
+    if (action === 'deploy_prep' && projectId) {
+      await fetch(`${API}/project/${projectId}/deploy-prep`, { method: 'POST' });
+      return `🐳 Deployment files generated (Dockerfile, docker-compose.yml)`;
+    }
+    if (action === 'backup' && projectId) {
+      const r = await fetch(`${API}/project/${projectId}/backup`, { method: 'POST' });
+      const d = await r.json();
+      return `💾 Backup created: ${d.backupFile || 'complete'}`;
+    }
+  }
+  return null; // Not a command
+}
+
+async function heroBuild() {
+  const input = document.getElementById('hero-build-input');
+  const description = input?.value?.trim();
+  if (!description || description.length < 5) {
+    return toast('Describe what you want to build first!', 'error');
+  }
+
+  input.disabled = true;
+  const btn = input.nextElementSibling;
+  if (btn) { btn.disabled = true; btn.textContent = '⟳ Building...'; }
+
+  toast('⚡ Forge is planning your project...', 'info');
+
+  try {
+    const r = await api('POST', '/build', { description, autoRun: true });
+
+    if (r.projectId) {
+      toast(`🚀 Building "${r.name}"! ${r.totalTasks} tasks started.`, 'success');
+      input.value = '';
+
+      // Switch to the new project view
+      await loadProjects();
+      const newProj = projects.find(p => p.id === r.projectId);
+      if (newProj) {
+        selectedProject = newProj;
+        await loadProjects();
+        await selectProject(newProj.projectId || newProj.id);
+        showView('project');
+        switchTab('chat'); // show live build progress
+      }
+
+      // Show build info in auto-build panel
+      setTimeout(() => {
+        const panel = document.getElementById('auto-build-panel');
+        if (panel) panel.style.display = 'block';
+        addAutoBuildLog(`🚀 Building: "${r.name}"`);
+        addAutoBuildLog(`📋 ${r.totalTasks} tasks across ${r.epics?.length} epics`);
+        (r.epics || []).forEach(e => addAutoBuildLog(`  • ${e.title} (${e.tasks?.length} tasks)`));
+      }, 500);
+    } else {
+      toast('Error: ' + (r.error || 'Unknown error'), 'error');
+    }
+  } catch(e) {
+    toast('Build failed: ' + e.message, 'error');
+  } finally {
+    if (input) input.disabled = false;
+    if (btn) { btn.disabled = false; btn.textContent = '⚡ Build It'; }
+  }
+}
+
+async function sendChat() {
+  const input = document.getElementById('chat-input');
+  const sendBtn = document.getElementById('chat-send');
+  const role = selectedAgentRole;
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  input.style.height = 'auto';
+
+  // Check for command shortcuts
+  const commandResult = await parseAndExecuteCommand(msg, selectedProject?.id);
+  if (commandResult) {
+    appendChatMessage('user', msg);
+    appendChatMessage('assistant', commandResult);
+    return;
+  }
+
+  const projectId = selectedProject?.id;
+  const msgs = document.getElementById('chat-messages');
+  if (input) input.disabled = true;
+  if (sendBtn) sendBtn.disabled = true;
+
+  // Add user message bubble
+  const userDiv = document.createElement('div');
+  userDiv.className = 'chat-msg user-msg';
+  userDiv.innerHTML = `<div class="msg-avatar">👤</div><div class="msg-content">${escapeHtml(msg)}</div>`;
+  msgs.appendChild(userDiv);
+  saveChatMessage(projectId, 'user', msg);
+
+  // Detect if user is asking an agent-specific question (like "explain X" to coder)
+  const isDirectAgentQuery = role !== 'orchestrator' && /^(explain|what|how|why|describe|show|list)/i.test(msg);
+
+  try {
+    if (isDirectAgentQuery) {
+      const thinkDiv = document.createElement('div');
+      thinkDiv.className = 'chat-msg assist-msg';
+      thinkDiv.innerHTML = `<div class="msg-avatar">⚡</div><div class="msg-content"><span class="typing-indicator">●●●</span></div>`;
+      msgs.appendChild(thinkDiv);
+      msgs.scrollTop = msgs.scrollHeight;
+      try {
+        const payload = { task: msg, useMultipass: false };
+        if (projectId) payload.projectId = projectId;
+        const r = await api('POST', `/agent/${role}`, payload);
+        const contentEl = thinkDiv.querySelector('.msg-content');
+        const text = r.output || 'No response';
+        contentEl.textContent = text;
+        saveChatMessage(projectId, 'assistant', text);
+      } catch(e) {
+        thinkDiv.querySelector('.msg-content').textContent = '❌ Error: ' + e.message;
+      }
+    } else {
+      await sendChatStreaming(msg, projectId, msgs);
+    }
+    msgs.scrollTop = msgs.scrollHeight;
+  } finally {
+    if (input) { input.disabled = false; input.focus(); }
+    if (sendBtn) sendBtn.disabled = false;
+  }
+}
+
+async function sendChatStreaming(message, projectId, messagesEl) {
+  if (!messagesEl) messagesEl = document.getElementById('chat-messages');
+
+  const assistDiv = document.createElement('div');
+  assistDiv.className = 'chat-msg assist-msg';
+  assistDiv.innerHTML = `<div class="msg-avatar">⚡</div><div class="msg-content" id="streaming-response"><span class="typing-indicator">●●●</span></div>`;
+  messagesEl.appendChild(assistDiv);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+
+  const contentEl = document.getElementById('streaming-response');
+  let fullText = '';
+
+  const inp = document.getElementById('chat-input');
+  const btn = document.getElementById('chat-send');
+  if (inp) inp.disabled = true;
+  if (btn) btn.disabled = true;
+
+  try {
+    const response = await fetch(`${API}/chat/stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, projectId })
+    });
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    contentEl.textContent = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      for (const line of chunk.split('\n')) {
+        if (line.startsWith('data: ')) {
+          try {
+            const d = JSON.parse(line.slice(6));
+            if (d.token) {
+              fullText += d.token;
+              contentEl.textContent = fullText;
+              messagesEl.scrollTop = messagesEl.scrollHeight;
+            }
+            if (d.done && d.type === 'build_started' && d.projectId) {
+              handleBuildStarted(d);
+            }
+          } catch {}
+        }
+      }
+    }
+    contentEl.id = '';
+    saveChatMessage(projectId, 'assistant', fullText || contentEl.textContent);
+  } catch(e) {
+    contentEl.textContent = `❌ Error: ${e.message}`;
+  } finally {
+    if (inp) { inp.disabled = false; inp.focus(); }
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function handleBuildStarted(data) {
+  await loadProjects();
+  const proj = projects.find(p => p.id === data.projectId);
+  if (proj) {
+    selectedProject = proj;
+    renderChatSuggestions(proj.id);
+    setTimeout(() => {
+      const panel = document.getElementById('auto-build-panel');
+      if (panel) {
+        panel.style.display = 'block';
+        addAutoBuildLog(`🚀 Building "${data.name || proj.name}"`);
+      }
+      switchTab('chat');
+    }, 400);
+  }
+}
+
+function renderChatSuggestions(projectId) {
+  const container = document.getElementById('chat-suggestions-container');
+  if (!container) return;
+  const suggestions = projectId ? [
+    '⚡ Run all tasks',
+    '🔍 What tasks are pending?',
+    '📊 Show project quality score',
+    '🏗 Scaffold starter files',
+    '▶ Run and test the project',
+    '🔄 Improve low-quality tasks'
+  ] : [
+    'Build a REST API with authentication',
+    'Create a CLI tool for file management',
+    'Write a web scraper in Python',
+    'Build a real-time chat app',
+    'Create a Discord bot'
+  ];
+  container.innerHTML = `<div class="chat-suggestions">${suggestions.map(s => `<span class="suggestion-chip" onclick="useSuggestion('${s.replace(/'/g, "\\'")}')">${s}</span>`).join('')}</div>`;
+}
+
+function useSuggestion(text) {
+  const input = document.getElementById('chat-input');
+  if (input) { input.value = text; input.focus(); input.dispatchEvent(new Event('input')); }
+}
+
+function initChatInput() {
+  const input = document.getElementById('chat-input');
+  if (!input) return;
+  input.addEventListener('input', () => {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 150) + 'px';
+  });
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+  });
+}
+
+initChatInput();
+renderChatSuggestions(null);
+
+// ── Log viewer ─────────────────────────────────────────────────────────────
+async function loadLog(which) {
+  currentLog = which;
+  const el = document.getElementById('log-content');
+  el.textContent = 'Loading...';
+  try {
+    const r = await api('GET', '/runner/status');
+    const logText = r.recentLog || '(empty)';
+    el.innerHTML = logText.split('\n').map(l => {
+      if (l.includes('[err]') || l.includes('Error') || l.includes('❌')) return `<span class="log-err">${l}</span>`;
+      if (l.includes('✅') || l.includes('[1]') || l.includes('✓')) return `<span class="log-ok">${l}</span>`;
+      if (l.includes('[warn]') || l.includes('⚠')) return `<span class="log-warn">${l}</span>`;
+      return l;
+    }).join('\n');
+    el.scrollTop = el.scrollHeight;
+  } catch { el.textContent = 'Could not load logs.'; }
+}
+
+// ── Tabs ───────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  ['chat','logs','files','live','search','metrics','examples'].forEach(t => {
+    const panelMap = { chat:'panel-chat', search:'panel-search', logs:'panel-logs', files:'panel-files', live:'panel-live', metrics:'panel-metrics', examples:'panel-examples' };
+    const panel = document.getElementById(panelMap[t]);
+    if (panel) panel.style.display = t === tab ? 'flex' : 'none';
+    const tabBtn = document.getElementById('tab-'+t);
+    if (tabBtn) tabBtn.classList.toggle('active', t === tab);
+  });
+  if (tab === 'logs') loadLog(currentLog);
+  if (tab === 'files' && currentBrowseProject) browseFiles(currentBrowseProject);
+  if (tab === 'metrics') loadMetrics();
+  if (tab === 'examples') renderExamples();
+}
+
+async function loadMetrics() {
+  const el = document.getElementById('metrics-content');
+  if (!el) return;
+  el.innerHTML = '<div style="color:var(--text3)">Loading…</div>';
+  try {
+    // Fetch capabilities and legacy metrics in parallel
+    const [cap, m] = await Promise.all([
+      api('GET', '/capabilities').catch(() => null),
+      api('GET', '/metrics').catch(() => null)
+    ]);
+    let html = '';
+
+    // ── Capabilities: Grade Badge + Quality Overview ──
+    if (cap && (cap.grade || cap.avgQuality != null)) {
+      const grade = cap.grade || 'B';
+      const avgQ = cap.avgQuality != null ? Number(cap.avgQuality).toFixed(1) : '—';
+      const best = cap.bestScore != null ? cap.bestScore : '—';
+      const done = cap.totalTasksDone ?? 0;
+      const hqRate = cap.highQualityRate != null ? Math.round(cap.highQualityRate * 100) : 0;
+      const qPct = avgQ !== '—' ? Math.min(100, Math.round(avgQ * 10)) : 0;
+
+      html += `<div style="display:flex;align-items:center;gap:16px;margin-bottom:14px;padding:14px;background:var(--bg3);border-radius:10px;border:1px solid var(--border2)">
+        <div class="grade-badge-large grade-${grade}">${grade}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:22px;font-weight:800;color:var(--text);line-height:1">${avgQ}<span style="font-size:13px;font-weight:400;color:var(--text3)">/10 avg quality</span></div>
+          <div style="margin:8px 0 4px;background:var(--bg);border-radius:4px;height:8px;overflow:hidden">
+            <div style="height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));width:${qPct}%;border-radius:4px;transition:width 0.8s"></div>
+          </div>
+          <div style="font-size:11px;color:var(--text3)">Best: <b style="color:var(--green)">${best}/10</b> &nbsp;·&nbsp; Done: <b style="color:var(--accent)">${done}</b> tasks &nbsp;·&nbsp; High Quality: <b style="color:var(--blue)">${hqRate}%</b></div>
+        </div>
+      </div>`;
+
+      // Score distribution
+      const dist = cap.scoreDistribution || {};
+      const excellent = dist.excellent ?? 0;
+      const good = dist.good ?? 0;
+      const acceptable = dist.acceptable ?? 0;
+      const poor = dist.poor ?? 0;
+      const distTotal = excellent + good + acceptable + poor || 1;
+      html += `<div style="font-weight:600;margin-bottom:8px;font-size:12px">📊 Score Distribution</div>`;
+      [
+        { label: 'Excellent (9–10)', count: excellent, color: '#4caf50' },
+        { label: 'Good (7–8)', count: good, color: '#007bff' },
+        { label: 'Acceptable (5–6)', count: acceptable, color: '#ff9800' },
+        { label: 'Poor (< 5)', count: poor, color: '#f44336' },
+      ].forEach(b => {
+        const pct = Math.round((b.count / distTotal) * 100);
+        html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px">
+          <span style="width:120px;color:var(--text2);flex-shrink:0">${b.label}</span>
+          <div style="flex:1;background:var(--bg3);border-radius:3px;height:12px;overflow:hidden">
+            <div style="background:${b.color};width:${pct}%;height:100%;border-radius:3px;transition:width 0.8s"></div>
+          </div>
+          <span style="width:32px;text-align:right;color:var(--text3)">${b.count}</span>
+        </div>`;
+      });
+
+      // Top achievements
+      if (cap.topAchievements?.length) {
+        html += `<div style="font-weight:600;margin:12px 0 6px;font-size:12px">🏆 Achievements</div>`;
+        cap.topAchievements.slice(0, 5).forEach(a => {
+          html += `<div style="font-size:11px;color:var(--text2);padding:3px 0;border-bottom:1px solid var(--border)">🎯 ${a}</div>`;
+        });
+      }
+
+      // Agent performance grid
+      if (cap.agentPerformance && Object.keys(cap.agentPerformance).length) {
+        html += `<div style="font-weight:600;margin:12px 0 8px;font-size:12px">🤖 Agent Performance</div>`;
+        html += `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:4px">`;
+        Object.entries(cap.agentPerformance).slice(0, 9).forEach(([agent, score]) => {
+          const s = Number(score);
+          const c = s >= 8 ? 'var(--green)' : s >= 6 ? 'var(--yellow)' : 'var(--red)';
+          html += `<div style="background:var(--bg3);border-radius:6px;padding:6px 8px;text-align:center;border:1px solid var(--border)">
+            <div style="font-size:15px;font-weight:700;color:${c}">${isNaN(s)?'—':s.toFixed(1)}</div>
+            <div style="font-size:10px;color:var(--text3);margin-top:2px">${agent}</div>
+          </div>`;
+        });
+        html += `</div>`;
+      }
+
+      html += `<div style="border-top:1px solid var(--border);margin:14px 0"></div>`;
+    }
+
+    // ── Legacy /metrics data ──
+    if (m) {
+      if (m.scoreHistogram && m.scoreHistogram.length) {
+        const max = Math.max(...m.scoreHistogram.map(r => r.count), 1);
+        html += `<div style="font-weight:600;margin-bottom:8px;font-size:12px">Score Histogram</div><div style="display:grid;gap:3px">`;
+        for (const r of m.scoreHistogram) {
+          const pct = Math.round((r.count / max) * 100);
+          html += `<div style="display:flex;align-items:center;gap:8px;font-size:11px"><span style="width:20px;text-align:right">${r.score}</span><div style="flex:1;background:var(--bg3);border-radius:3px;height:14px"><div style="background:var(--accent);width:${pct}%;height:100%;border-radius:3px"></div></div><span style="width:24px;color:var(--text3)">${r.count}</span></div>`;
+        }
+        html += `</div>`;
+      }
+      const mins = Math.round((m.avgDurationMs || 0) / 60000);
+      const secs = Math.round(((m.avgDurationMs || 0) % 60000) / 1000);
+      html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px">
+        <div style="background:var(--bg3);border-radius:6px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:700;color:var(--accent)">${mins}m ${secs}s</div><div style="font-size:10px;color:var(--text3);margin-top:2px">avg task time</div></div>
+        <div style="background:var(--bg3);border-radius:6px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:700;color:var(--green)">${(m.agentStats || []).reduce((s, a) => s + a.count, 0)}</div><div style="font-size:10px;color:var(--text3);margin-top:2px">tasks done</div></div>
+      </div>`;
+      if (m.tasksPerHour && m.tasksPerHour.length) {
+        html += `<div style="font-weight:600;margin:14px 0 8px;font-size:12px">Tasks/Hour</div><div style="display:flex;flex-wrap:wrap;gap:4px">`;
+        for (const r of m.tasksPerHour.slice(0, 12).reverse()) {
+          html += `<div style="background:var(--bg3);border-radius:4px;padding:3px 7px;font-size:10px;color:var(--text2)">${r.hour?.slice(11) || r.hour} <b style="color:var(--accent)">${r.count}</b></div>`;
+        }
+        html += `</div>`;
+      }
+    }
+
+    el.innerHTML = html || '<div style="color:var(--text3)">No metrics yet — run some tasks first.</div>';
+
+    // ── Quick Actions ──
+    const qaDiv = document.createElement('div');
+    qaDiv.style.cssText = 'margin-top:14px;padding-top:14px;border-top:1px solid var(--border)';
+    qaDiv.innerHTML = `<div style="font-weight:600;margin-bottom:8px;font-size:12px">⚡ Quick Actions</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost" style="font-size:11px" onclick="retryLowQuality()">🔁 Retry Low Quality</button>
+        <button class="btn btn-ghost" style="font-size:11px" onclick="runImproveLoop()">🚀 Run Improve Loop</button>
+        <button class="btn btn-ghost" style="font-size:11px" onclick="loadMetrics()">↺ Refresh Metrics</button>
+      </div>`;
+    el.appendChild(qaDiv);
+
+    // ── Top Patterns ──
+    try {
+      const patterns = await api('GET', '/patterns').catch(() => null);
+      if (patterns && (patterns.patterns || patterns.topPatterns || []).length) {
+        const list = patterns.patterns || patterns.topPatterns || [];
+        const pDiv = document.createElement('div');
+        pDiv.style.cssText = 'margin-top:10px';
+        let pHtml = `<div style="font-weight:600;margin-bottom:6px;font-size:12px">📐 Top Patterns Used</div>`;
+        list.slice(0, 6).forEach(p => {
+          const name = typeof p === 'string' ? p : (p.name || p.pattern || JSON.stringify(p));
+          const count = typeof p === 'object' ? (p.count || p.uses || '') : '';
+          pHtml += `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);font-size:11px">
+            <span style="color:var(--text2)">📐 ${name}</span>${count ? `<span style="color:var(--accent)">${count}×</span>` : ''}
+          </div>`;
+        });
+        pDiv.innerHTML = pHtml;
+        el.appendChild(pDiv);
+      }
+    } catch {}
+
+    // ── Sparkline ──
+    try {
+      const m2 = await api('GET', '/stats');
+      const recentScores = (m2.recentTasks || []).map(t => t.quality_score || 0).filter(s => s > 0).slice(-20);
+      if (recentScores.length > 2) {
+        const canvas = document.createElement('canvas');
+        canvas.className = 'chart-canvas';
+        canvas.style.cssText = 'width:100%;height:80px;display:block;margin-bottom:12px';
+        canvas.width = 300; canvas.height = 80;
+        el.prepend(canvas);
+        const ctx2 = canvas.getContext('2d');
+        const maxV = 10, minV = 0, padX = 8, padY = 8;
+        const w = canvas.width - padX * 2, h = canvas.height - padY * 2;
+        const step = w / (recentScores.length - 1);
+        ctx2.strokeStyle = '#7c6aff';
+        ctx2.lineWidth = 2;
+        ctx2.beginPath();
+        recentScores.forEach((v, i) => {
+          const x = padX + i * step;
+          const y = padY + h - (v - minV) / (maxV - minV) * h;
+          i === 0 ? ctx2.moveTo(x, y) : ctx2.lineTo(x, y);
+        });
+        ctx2.stroke();
+        ctx2.lineTo(padX + (recentScores.length - 1) * step, padY + h);
+        ctx2.lineTo(padX, padY + h);
+        ctx2.closePath();
+        ctx2.fillStyle = 'rgba(124,106,255,0.15)';
+        ctx2.fill();
+      }
+    } catch {}
+    loadKnowledgeGraph();
+  } catch (e) {
+    el.innerHTML = `<div style="color:var(--error)">Error: ${e.message}</div>`;
+  }
+}
+
+// ── Web Search ─────────────────────────────────────────────────────────────
+async function doSearch() {
+  const q = document.getElementById('search-query').value.trim();
+  if (!q) return;
+  const area = document.getElementById('search-results');
+  area.innerHTML = '<div style="padding:8px;display:flex;align-items:center;gap:8px"><div class="spinner"></div> Searching…</div>';
+  try {
+    const r = await api('GET', `/tools/search?q=${encodeURIComponent(q)}&source=${currentSearchSource}&n=6`);
+    let html = '';
+
+    // Web results
+    const webRes = r.web || r;
+    if (webRes.abstract) {
+      html += `<div style="margin-bottom:12px;padding:10px 12px;background:var(--bg3);border-radius:8px;border-left:3px solid var(--accent)">
+        <div style="font-weight:700;color:var(--accent);font-size:11px;margin-bottom:4px">📖 SUMMARY</div>
+        <div>${webRes.abstract}</div>
+      </div>`;
+    }
+    (webRes.results || []).forEach(item => {
+      html += `<div style="margin-bottom:10px;padding:10px 12px;background:var(--bg3);border-radius:8px">
+        ${item.title ? `<div style="font-weight:600;color:var(--text1);margin-bottom:3px;font-size:12px">${item.title}</div>` : ''}
+        <div style="font-size:12px">${item.snippet || ''}</div>
+        ${item.url ? `<div style="margin-top:4px"><a href="${item.url}" target="_blank" style="color:var(--accent);font-size:10px;text-decoration:none">${item.url.slice(0,70)}…</a></div>` : ''}
+      </div>`;
+    });
+
+    // npm results
+    const npmRes = r.npm;
+    if (npmRes?.packages?.length) {
+      html += `<div style="font-size:11px;font-weight:700;color:var(--text3);margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px">📦 npm Packages</div>`;
+      npmRes.packages.forEach(pkg => {
+        html += `<div style="margin-bottom:8px;padding:8px 12px;background:var(--bg3);border-radius:8px;display:flex;align-items:start;gap:8px">
+          <div style="flex:1">
+            <span style="color:var(--accent);font-weight:700;font-size:12px">${pkg.name}</span>
+            <span style="color:var(--text3);font-size:11px;margin-left:6px">v${pkg.version}</span>
+            <div style="color:var(--text2);font-size:11px;margin-top:2px">${pkg.description || ''}</div>
+          </div>
+          ${pkg.url ? `<a href="${pkg.url}" target="_blank" style="color:var(--accent);font-size:10px;flex-shrink:0">npm ↗</a>` : ''}
+        </div>`;
+      });
+    }
+
+    // StackOverflow results
+    const soRes = r.stackoverflow;
+    if (soRes?.questions?.length) {
+      html += `<div style="font-size:11px;font-weight:700;color:var(--text3);margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px">💬 StackOverflow</div>`;
+      soRes.questions.forEach(q => {
+        html += `<div style="margin-bottom:8px;padding:8px 12px;background:var(--bg3);border-radius:8px">
+          <div style="display:flex;align-items:start;gap:8px">
+            <div style="flex:1">
+              <a href="${q.url}" target="_blank" style="color:var(--accent);font-size:12px;text-decoration:none;font-weight:600">${q.title}</a>
+              <div style="font-size:10px;color:var(--text3);margin-top:2px">▲${q.score} votes · ${q.answers} answers${q.answered ? ' · ✅ answered' : ''} · ${q.tags}</div>
+            </div>
+          </div>
+          ${q.body ? `<div style="font-size:11px;color:var(--text2);margin-top:4px">${q.body}</div>` : ''}
+        </div>`;
+      });
+    }
+
+    area.innerHTML = html || '<div style="color:var(--text3);padding:8px">No results found. Try a different query.</div>';
+  } catch(e) { area.innerHTML = `<div style="color:var(--red);padding:8px">Search failed: ${e.message}</div>`; }
+}
+
+// ── Modal (legacy – kept for compatibility) ────────────────────────────────
+function openModal() { openWizard(); }
+function closeModal() { closeWizard(); }
+
+// ── New Project Wizard ─────────────────────────────────────────────────────
+let wizardStep = 1;
+let wizardStack = 'node';
+
+function openWizard() {
+  document.getElementById('wizard-overlay').style.display = 'flex';
+  wizardStep = 1;
+  wizardStack = 'node';
+  showWizardStep(1);
+  document.querySelectorAll('.stack-opt').forEach(e => e.classList.remove('selected'));
+  document.querySelector('.stack-opt[data-stack="node"]')?.classList.add('selected');
+  fetch('/models').then(r=>r.json()).then(d => {
+    const sel = document.getElementById('wizard-model');
+    sel.innerHTML = (d.models||[]).map(m=>`<option value="${m.name}"${m.name==='phi3.5-forge'?' selected':''}>${m.name} (${m.size||Math.round(m.sizeMB/1024*10)/10+'GB'||'?'})</option>`).join('');
+    if (!sel.options.length) sel.innerHTML = '<option value="phi3.5-forge">phi3.5-forge (2.2GB - Recommended ✓)</option>';
+  }).catch(()=>{});
+}
+function closeWizard() { document.getElementById('wizard-overlay').style.display = 'none'; }
+function showWizardStep(n) {
+  [1,2,3].forEach(i => {
+    document.getElementById(`wstep-${i}`).classList.toggle('active', i===n);
+    const dot = document.getElementById(`wdot-${i}`);
+    if (dot) { dot.className = 'wizard-dot' + (i < n ? ' done' : i===n ? ' active' : ''); }
+  });
+}
+function wizardNext(from) {
+  if (from === 1) {
+    const name = document.getElementById('wiz-name').value.trim();
+    const desc = document.getElementById('wiz-desc').value.trim();
+    if (!name || !desc) { toast('Name and description required','error'); return; }
+    wizardStep = 2; showWizardStep(2);
+  } else if (from === 2) {
+    const summary = document.getElementById('wiz-summary');
+    summary.innerHTML = `<div><b>Name:</b> ${document.getElementById('wiz-name').value}</div><div><b>Stack:</b> ${wizardStack}</div><div><b>Model:</b> ${document.getElementById('wizard-model').value}</div><div style="margin-top:8px;color:var(--text3)">${document.getElementById('wiz-desc').value}</div>`;
+    wizardStep = 3; showWizardStep(3);
+  } else if (from === -1) {
+    wizardStep = Math.max(1, wizardStep-1); showWizardStep(wizardStep);
+  }
+}
+function selectStack(el) {
+  document.querySelectorAll('.stack-opt').forEach(e=>e.classList.remove('selected'));
+  el.classList.add('selected');
+  wizardStack = el.dataset.stack;
+}
+async function wizardCreate() {
+  const btn = document.getElementById('wiz-create-btn');
+  btn.disabled = true; btn.textContent = '⏳ Creating…';
+  const name = document.getElementById('wiz-name').value.trim();
+  const desc = document.getElementById('wiz-desc').value.trim();
+  const model = document.getElementById('wizard-model').value;
+  const brainstorm = document.getElementById('wiz-brainstorm')?.checked || false;
+  try {
+    const r = await api('POST', '/project/create', { name, description: desc, stack: wizardStack, model, brainstorm });
+    closeWizard();
+    toast(`✅ "${name}" created! ${r.plan?.epics?.length||0} epics planned.`, 'success');
+    await loadData();
+    if (r.projectId) selectProject(r.projectId);
+  } catch(e) { toast('Error: '+e.message, 'error'); }
+  btn.disabled = false; btn.textContent = '🚀 Launch Project';
+}
+
+// ── Auto-refresh ───────────────────────────────────────────────────────────
+let autoRefresh = true;
+let autoRefreshTimer = null;
+function toggleAutoRefresh() {
+  autoRefresh = !autoRefresh;
+  const btn = document.getElementById('auto-refresh-btn');
+  if (btn) { btn.textContent = autoRefresh ? '🔄 Auto' : '⏸ Paused'; btn.style.opacity = autoRefresh ? '1' : '0.5'; }
+  if (autoRefresh) { autoRefreshTimer = setInterval(refreshAll, 10000); }
+  else { clearInterval(autoRefreshTimer); }
+}
+
+// ── Quick project actions ──────────────────────────────────────────────────
+async function quickProjectAction(projectId, action) {
+  try {
+    if (action === 'run') {
+      await api('POST', `/project/${projectId}/full-cycle`);
+      toast('🚀 Full dev cycle started!', 'success');
+    } else if (action === 'health') {
+      const h = await api('GET', `/project/${projectId}/health`);
+      toast(`${h.healthy?'✅':'⚠️'} Grade: ${h.grade} | Score: ${h.avgScore}/10 | ${h.done}/${h.totalTasks} tasks | ${h.files} files`, h.healthy?'success':'info');
+    } else if (action === 'backup') {
+      const b = await api('POST', `/project/${projectId}/backup`);
+      toast(`📦 Backed up: ${Math.round(b.size/1024)}KB`, 'success');
+    } else if (action === 'retry') {
+      const r = await api('POST', `/project/${projectId}/retry-low-quality`, { minScore: 7 });
+      toast(`♻️ ${r.queued} low-quality tasks reset`, 'info');
+    } else if (action === 'security') {
+      toast('🔒 Running security audit…', 'info');
+      const s = await api('POST', `/project/${projectId}/security-audit`);
+      toast(`🔒 Security: ${s.securityScore??'?'}/10`, 'info');
+    }
+  } catch(e) { toast('Error: '+e.message, 'error'); }
+}
+
+async function createProject() {
+  const name = document.getElementById('new-name').value.trim();
+  const desc = document.getElementById('new-desc').value.trim();
+  const stack = document.getElementById('new-stack').value;
+  if (!name || !desc) { toast('Name and description required', 'error'); return; }
+  const btn = document.getElementById('create-btn');
+  btn.disabled = true; btn.textContent = '⏳ Planning...';
+  toast('AI is planning your project (1-2 min)...', 'info');
+  try {
+    const r = await api('POST', '/project/create', { name, desc, stack });
+    if (r.success) {
+      toast(`✅ Project created! ${r.plan?.epics?.length||0} epics planned.`, 'success');
+      closeModal();
+      await refreshAll();
+      selectProject(r.projectId);
+    } else toast('Error: ' + (r.error || 'Unknown'), 'error');
+  } catch(e) { toast('Failed: ' + e.message, 'error'); }
+  btn.disabled = false; btn.textContent = 'Create Project';
+}
+
+// ── Progress Bar ───────────────────────────────────────────────────────────
+function showProgress(text, pct, score) {
+  const c = document.getElementById('progress-bar-container');
+  c.style.display = 'block';
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-text').textContent = text;
+  if (score) {
+    const col = score >= 8 ? '#4caf50' : score >= 6 ? '#ff9800' : '#f44336';
+    document.getElementById('progress-score').innerHTML = `<span style="color:${col}">${score}/10</span>`;
+  } else {
+    document.getElementById('progress-score').textContent = '';
+  }
+}
+
+function hideProgress() {
+  document.getElementById('progress-bar-container').style.display = 'none';
+}
+
+// ── Help Modal ─────────────────────────────────────────────────────────────
+function openHelp() { document.getElementById('help-overlay').style.display = 'block'; }
+function closeHelp() { document.getElementById('help-overlay').style.display = 'none'; }
+
+// ── Onboarding ─────────────────────────────────────────────────────────────
+async function runOnboardingChecks() {
+  // Check server health
+  try {
+    const r = await fetch(`${API}/health`);
+    const d = await r.json();
+    document.getElementById('check-server').textContent = `✅ API server running (${d.version||'v?'})`;
+    document.getElementById('check-server').className = 'check-item ok';
+  } catch(e) {
+    document.getElementById('check-server').textContent = `❌ API server not responding — run start.sh`;
+    document.getElementById('check-server').className = 'check-item fail';
+  }
+
+  // Check Ollama via /system/vram (ollama must be running for GPU info) + /models/forge-models
+  try {
+    const fmResp = await fetch(`${API}/models/forge-models`);
+    const fm = await fmResp.json();
+    const forgeModels = fm.allModels || [];
+    const hasModel = forgeModels.some(m =>
+      (typeof m === 'string' ? m : (m.name || '')).includes('phi3.5-forge') ||
+      (typeof m === 'string' ? m : (m.name || '')).includes('phi3.5')
+    );
+    document.getElementById('check-ollama').textContent = `✅ Ollama running`;
+    document.getElementById('check-ollama').className = 'check-item ok';
+    document.getElementById('check-model').textContent = hasModel
+      ? `✅ phi3.5-forge model available`
+      : `❌ phi3.5-forge not found — run: ollama pull phi3.5`;
+    document.getElementById('check-model').className = 'check-item ' + (hasModel ? 'ok' : 'fail');
+  } catch(e) {
+    // Fall back to /models
+    try {
+      const r = await fetch(`${API}/models`);
+      const d = await r.json();
+      const models = (d.models || []).map(m => typeof m === 'string' ? m : m.name || '');
+      const hasModel = models.some(m => m.includes('phi3.5') || m.includes('forge'));
+      document.getElementById('check-ollama').textContent = `✅ Ollama running (${models.length} models)`;
+      document.getElementById('check-ollama').className = 'check-item ok';
+      document.getElementById('check-model').textContent = hasModel
+        ? `✅ phi3.5-forge model available`
+        : `❌ phi3.5-forge not found — run: ollama pull phi3.5`;
+      document.getElementById('check-model').className = 'check-item ' + (hasModel ? 'ok' : 'fail');
+    } catch(e2) {
+      document.getElementById('check-ollama').textContent = `❌ Ollama not running — run: ollama serve`;
+      document.getElementById('check-ollama').className = 'check-item fail';
+      document.getElementById('check-model').textContent = `❌ Cannot check (Ollama offline)`;
+      document.getElementById('check-model').className = 'check-item fail';
+    }
+  }
+
+  // Check VRAM — usedMB < 3500 is considered OK
+  try {
+    const r = await fetch(`${API}/system/vram`);
+    const v = await r.json();
+    if (v.available) {
+      const free = v.totalMB - v.usedMB;
+      const vramOk = v.usedMB < 3500;
+      document.getElementById('check-vram').textContent = vramOk
+        ? `✅ VRAM ok: ${v.usedMB}/${v.totalMB}MB used (${free}MB free)`
+        : `⚠️ VRAM tight: ${v.usedMB}MB used — close other GPU apps`;
+      document.getElementById('check-vram').className = 'check-item ' + (vramOk ? 'ok' : 'fail');
+    } else {
+      document.getElementById('check-vram').textContent = `⚠️ GPU stats unavailable (nvidia-smi not found)`;
+      document.getElementById('check-vram').className = 'check-item ok';
+    }
+  } catch(e) {
+    document.getElementById('check-vram').textContent = `⚠️ Could not check VRAM`;
+    document.getElementById('check-vram').className = 'check-item ok';
+  }
+}
+
+function completeOnboarding() {
+  localStorage.setItem('forge_onboarded', '1');
+  document.getElementById('onboarding-overlay').style.display = 'none';
+}
+
+async function updateModelStatus() {
+  if (!selectedProject) return;
+  try {
+    const s = await api('GET', `/project/${selectedProject.id}/auto-run/status`);
+    const dot = document.getElementById('model-dot');
+    const txt = document.getElementById('model-status-text');
+    if (!dot || !txt) return;
+    if (s.inProgress > 0) {
+      dot.style.background = '#22c55e';
+      txt.textContent = `Model running (${s.inProgress} task${s.inProgress>1?'s':''})`;
+    } else if (s.running) {
+      dot.style.background = '#f59e0b';
+      txt.textContent = 'Queuing next task...';
+    } else {
+      dot.style.background = 'var(--text3)';
+      txt.textContent = 'Model idle';
+    }
+  } catch {}
+}
+
+async function init() {
+  restoreChatHistory();
+  await refreshAll();
+  initSSE();
+  loadModels();
+  pollGPU();
+  updateVramBar();
+  updateSystemStatus();
+  renderAgentBar();
+  if (!localStorage.getItem('forge_onboarded')) {
+    document.getElementById('onboarding-overlay').style.display = 'flex';
+    runOnboardingChecks();
+  }
+  // Poll GPU every 15s
+  setInterval(pollGPU, 15000);
+  // Poll VRAM every 10s
+  setInterval(updateVramBar, 10000);
+  // System status bar every 30s
+  setInterval(updateSystemStatus, 30000);
+  // Model status indicator every 3s
+  setInterval(updateModelStatus, 3000);
+  // Auto-refresh every 10s
+  autoRefreshTimer = setInterval(refreshAll, 10000);
+  // Poll projects/stats while runner active
+  setInterval(async () => {
+    await refreshAll();
+    try {
+      const r = await api('GET', '/runner/status');
+      const el = document.getElementById('runner-card-status');
+      if (el) {
+        el.className = r.running ? 'runner-indicator on' : 'runner-indicator off';
+        el.innerHTML = `<div class="dot"></div><span>Runner ${r.running?'active':'idle'}</span>`;
+      }
+    } catch {}
+  }, 15000);
+}
+
+// loadData is an alias for refreshAll (used by wizard)
+const loadData = refreshAll;
+
+// ── Agent Collaboration Status ─────────────────────────────────────────────
+const AGENT_ROLES = ['research','architect','coder','reviewer','tester','debugger','refactor','security','docs'];
+let _activeAgents = {};
+
+function updateAgentStatus(role, status, score) {
+  if (!role) return;
+  _activeAgents[role] = { status, score, ts: Date.now() };
+  renderAgentBar();
+}
+
+function renderAgentBar() {
+  const bar = document.getElementById('agent-status-bar');
+  if (!bar) return;
+  bar.innerHTML = AGENT_ROLES.map(role => {
+    const a = _activeAgents[role];
+    const color = !a ? '#1a1a2e' : a.status === 'running' ? '#2a1a3e' : a.status === 'done' ? '#1a3a1a' : '#3a1a1a';
+    const textColor = !a ? '#333' : a.status === 'running' ? '#c678dd' : a.status === 'done' ? '#4caf50' : '#f44336';
+    const icon = !a ? '○' : a.status === 'running' ? '⟳' : a.status === 'done' ? '✓' : '✗';
+    return `<div style="background:${color};color:${textColor};padding:4px 8px;border-radius:4px;font-size:11px;font-family:monospace;">
+      ${icon} ${role}${a && a.score ? ' ' + a.score : ''}
+    </div>`;
+  }).join('');
+}
+
+// ── Model VRAM Hint ────────────────────────────────────────────────────────
+function updateModelVramHint(model) {
+  const hints = {
+    'phi3.5-forge': { mb: 2200, ctx: 4096, color: '#4caf50', msg: 'Fits perfectly in 4GB VRAM. Best quality for phi3.5.' },
+    'phi3.5:latest': { mb: 2200, ctx: 4096, color: '#4caf50', msg: 'Same as forge model.' },
+    'qwen2.5-coder:1.5b': { mb: 1000, ctx: 16384, color: '#ff9800', msg: '16K context. Good for large files. Slightly lower quality.' },
+    'deepseek-coder:1.3b': { mb: 800, ctx: 24576, color: '#ff9800', msg: '24K context. Most context space. Weaker reasoning.' }
+  };
+  const h = hints[model] || { mb: 0, ctx: 4096, color: '#888', msg: 'Unknown model' };
+  const vramPct = Math.round(h.mb / 4096 * 100);
+  const hint = document.getElementById('vram-hint');
+  if (hint) hint.innerHTML =
+    `<span style="color:${h.color}">VRAM: ${h.mb}MB (${vramPct}%) | Max ctx: ${h.ctx} tokens</span><br>
+     <span style="color:#888">${h.msg}</span>`;
+}
+
+// ── Header VRAM Bar ────────────────────────────────────────────────────────
+async function updateVramBar() {
+  try {
+    const r = await fetch(`${API}/system/vram`);
+    const v = await r.json();
+    if (v.available) {
+      const pct = v.totalMB > 0 ? Math.round(v.usedMB / v.totalMB * 100) : 0;
+      const fill = document.getElementById('vram-fill');
+      const label = document.getElementById('vram-label');
+      if (fill) {
+        fill.style.width = pct + '%';
+        fill.style.background = pct > 90 ? '#f44336' : pct > 75 ? '#ff9800' : '#7c6af5';
+      }
+      if (label) label.textContent = `${v.usedMB}/${v.totalMB}MB`;
+    }
+  } catch(e) {}
+}
+
+// ── Workspace & Toast helpers ──────────────────────────────────────────────
+async function openInWorkspace(projectId) {
+  await fetch(`${API}/workspace/set/${projectId}`, { method: 'POST' });
+  showToast('Workspace set to ' + projectId);
+}
+
+function showToast(msg) {
+  toast(msg, 'info');
+}
+
+// ── Example Projects Gallery ───────────────────────────────────────────────
+const EXAMPLE_PROJECTS = [
+  {
+    name: 'REST API',
+    stack: 'node',
+    desc: 'Express REST API with CRUD endpoints, SQLite, authentication, input validation',
+    tasks: 12,
+    avgScore: 8.4,
+    time: '~18 min',
+    tags: ['api', 'express', 'sqlite', 'auth']
+  },
+  {
+    name: 'CLI Tool',
+    stack: 'node-cli',
+    desc: 'Command-line tool with subcommands, flags, colored output, config file support',
+    tasks: 8,
+    avgScore: 8.1,
+    time: '~12 min',
+    tags: ['cli', 'node', 'terminal']
+  },
+  {
+    name: 'Web Scraper',
+    stack: 'node',
+    desc: 'Web scraper with rate limiting, retry logic, CSV export, and error recovery',
+    tasks: 10,
+    avgScore: 7.9,
+    time: '~15 min',
+    tags: ['scraping', 'automation', 'csv']
+  },
+  {
+    name: 'Task Queue',
+    stack: 'node',
+    desc: 'Job queue with priorities, retries, dead letter queue, SQLite persistence',
+    tasks: 14,
+    avgScore: 8.6,
+    time: '~22 min',
+    tags: ['queue', 'jobs', 'async']
+  },
+  {
+    name: 'File Processor',
+    stack: 'node',
+    desc: 'Batch file processor: watch directory, transform files, report results',
+    tasks: 9,
+    avgScore: 8.0,
+    time: '~14 min',
+    tags: ['files', 'batch', 'automation']
+  },
+  {
+    name: 'Auth Service',
+    stack: 'node',
+    desc: 'JWT authentication service: register, login, refresh tokens, middleware',
+    tasks: 11,
+    avgScore: 8.3,
+    time: '~17 min',
+    tags: ['auth', 'jwt', 'security']
+  }
+];
+
+function renderExamples() {
+  const grid = document.getElementById('examples-grid');
+  if (!grid) return;
+  grid.innerHTML = EXAMPLE_PROJECTS.map(ex => `
+    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+        <h4 style="color:var(--text-primary);margin:0;">${ex.name}</h4>
+        <span style="background:#1a3a1a;color:#4caf50;padding:2px 8px;border-radius:12px;font-size:11px;">${ex.avgScore}/10</span>
+      </div>
+      <p style="color:var(--text-secondary);font-size:12px;margin:0 0 12px 0;">${ex.desc}</p>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
+        ${ex.tags.map(t => `<span style="background:var(--bg-secondary);color:var(--text-muted);padding:2px 6px;border-radius:3px;font-size:10px;">${t}</span>`).join('')}
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="color:var(--text-muted);font-size:11px;">${ex.tasks} tasks · ${ex.time}</span>
+        <button onclick="createFromExample('${ex.name}','${ex.desc}','${ex.stack}')"
+          style="background:var(--accent);color:#fff;border:none;padding:6px 12px;border-radius:4px;font-size:12px;cursor:pointer;">
+          Build This →
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function createFromExample(name, desc, stack) {
+  if (!confirm('Create project: ' + name + '?')) return;
+  const r = await fetch(`${API}/project/create`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, description: desc, stack })
+  });
+  const d = await r.json();
+  if (d.projectId) {
+    showToast('Project created! ' + d.projectId);
+    switchTab('chat');
+    loadProjects();
+  }
+}
+
+// ── Knowledge Graph ────────────────────────────────────────────────────────
+async function loadKnowledgeGraph() {
+  try {
+    const r = await fetch(`${API}/knowledge`);
+    const d = await r.json();
+    const container = document.getElementById('knowledge-stats');
+    if (!container) return;
+
+    const byType = d.byType || {};
+    const total = d.total || 0;
+
+    container.innerHTML = `
+      <div style="font-weight:600;margin-bottom:8px;font-size:12px;">🧠 Knowledge Base</div>
+      <div style="color:var(--text-secondary);font-size:13px;margin-bottom:8px;">
+        <strong style="color:var(--text-primary)">${total} entries</strong>
+      </div>
+      ${Object.entries(byType).map(([type, count]) => `
+        <div style="display:flex;align-items:center;gap:8px;margin:4px 0;">
+          <span style="min-width:80px;color:var(--text-muted);font-size:11px;">${type}</span>
+          <div style="flex:1;background:var(--bg-secondary);height:6px;border-radius:3px;overflow:hidden;">
+            <div style="width:${total > 0 ? Math.round(count/total*100) : 0}%;height:100%;background:var(--accent);"></div>
+          </div>
+          <span style="color:var(--text-secondary);font-size:11px;min-width:20px;">${count}</span>
+        </div>
+      `).join('')}
+    `;
+  } catch(e) {}
+}
+
+// ── System Status Bar Update ───────────────────────────────────────────────
+async function updateSystemStatus() {
+  try {
+    const [health, vram] = await Promise.all([
+      fetch(`${API}/health`).then(r => r.json()).catch(() => null),
+      fetch(`${API}/system/vram`).then(r => r.json()).catch(() => null)
+    ]);
+    const serverEl = document.getElementById('ss-server');
+    const modelEl = document.getElementById('ss-model');
+    const vramEl = document.getElementById('ss-vram-pct');
+    const tasksEl = document.getElementById('ss-tasks');
+    if (serverEl) {
+      const online = !!health;
+      serverEl.textContent = online ? 'Online' : 'Offline';
+      serverEl.style.color = online ? 'var(--green)' : 'var(--red)';
+    }
+    if (modelEl && health?.model) modelEl.textContent = health.model;
+    if (vramEl && vram?.available) {
+      const pct = vram.totalMB > 0 ? Math.round(vram.usedMB / vram.totalMB * 100) : 0;
+      vramEl.textContent = `${pct}%`;
+      vramEl.style.color = pct > 90 ? 'var(--red)' : pct > 75 ? 'var(--yellow)' : 'var(--green)';
+    }
+    if (tasksEl) tasksEl.textContent = stats.tasks?.done ?? '—';
+  } catch(e) {}
+}
+
+// ── Pipeline Stage → Chat ──────────────────────────────────────────────────
+function appendPipelineStageToChat(d) {
+  const msgs = document.getElementById('chat-messages');
+  if (!msgs) return;
+  const statusIcon = d.status === 'done' ? '✅' : d.status === 'error' ? '❌' : '⟳';
+  const scoreHtml = d.score ? ` <span class="score-badge ${d.score>=8?'score-high':d.score>=6?'score-med':'score-low'}">${d.score}/10</span>` : '';
+  const statusClass = d.status === 'done' ? 'done' : d.status === 'running' ? 'running' : '';
+  const div = document.createElement('div');
+  div.className = 'chat-msg system';
+  div.style.cssText = 'padding:2px 8px;font-size:11px;text-align:left;border:none;background:transparent;display:flex;align-items:center;gap:6px';
+  div.innerHTML = `<span class="pipeline-stage-chat ${statusClass}">${statusIcon} <b>${d.role || d.stage || 'stage'}</b></span>${scoreHtml}`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+// ── Run Next Task (Tasks View button) ─────────────────────────────────────
+async function runNextTask() {
+  const btn = document.getElementById('run-next-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Running…'; }
+  const toastMsg2 = selectedProject
+    ? `Running next task for "${selectedProject.name}" — this takes 5-10 min...`
+    : 'Running next pending task — this takes 5-10 min...';
+  toast(toastMsg2, 'info');
+  try {
+    const payload = selectedProject ? { projectId: selectedProject.id } : {};
+    const r = await api('POST', '/task/run-next', payload);
+    if (r.taskId) {
+      toast(`✅ Task done! Score: ${r.qualityScore}/10`, 'success');
+    } else if (r.message) {
+      toast(r.message, 'info');
+    } else if (r.error) {
+      toast('Error: ' + r.error, 'error');
+    }
+  } catch(e) { toast('Task failed: ' + e.message, 'error'); }
+  finally {
+    // Always refresh so the button re-renders fresh and enabled
+    await refreshAll();
+  }
+}
+
+// ── File Editor ────────────────────────────────────────────────────────────
+let editorCurrentFile = null;
+let editorCurrentProject = null;
+
+async function openFileEditor(projectId, filePath) {
+  editorCurrentProject = projectId;
+  editorCurrentFile = filePath;
+  try {
+    const r = await api('GET', `/project/${projectId}/file?path=${encodeURIComponent(filePath)}`);
+    document.getElementById('editor-filename').textContent = filePath;
+    document.getElementById('file-editor').value = r.content || '';
+    const panel = document.getElementById('file-editor-panel');
+    panel.style.display = 'flex';
+    document.getElementById('editor-result').style.display = 'none';
+  } catch(e) { toast('Could not open file: ' + e.message, 'error'); }
+}
+
+function closeFileEditor() {
+  document.getElementById('file-editor-panel').style.display = 'none';
+}
+
+async function saveEditorFile() {
+  if (!editorCurrentFile || !editorCurrentProject) return;
+  const content = document.getElementById('file-editor').value;
+  try {
+    await api('PUT', `/project/${editorCurrentProject}/file`, { content, path: editorCurrentFile });
+    toast('💾 File saved!', 'success');
+  } catch(e) { toast('Save failed: ' + e.message, 'error'); }
+}
+
+async function runEditorAction(action) {
+  const code = document.getElementById('file-editor').value;
+  if (!code.trim()) return toast('No code to analyze', 'error');
+  const resultDiv = document.getElementById('editor-result');
+  resultDiv.style.display = 'block';
+  resultDiv.textContent = `⟳ Running ${action}…`;
+  const endpointMap = { explain: '/code/explain', fix: '/code/fix', test: '/code/generate-tests', refactor: '/code/refactor' };
+  const endpoint = endpointMap[action];
+  const f = editorCurrentFile || '';
+  const lang = f.endsWith('.py') ? 'python' : f.endsWith('.ts') ? 'typescript' : f.endsWith('.rs') ? 'rust' : 'javascript';
+  try {
+    const r = await api('POST', endpoint, { code, lang, filename: editorCurrentFile });
+    const result = r.explanation || r.fixed || r.tests || r.refactored || r.result || JSON.stringify(r, null, 2);
+    resultDiv.textContent = result;
+    if (action !== 'explain' && result.trim()) {
+      if (confirm(`Apply ${action} result to editor?`)) {
+        document.getElementById('file-editor').value = result;
+        resultDiv.style.display = 'none';
+        toast(`✅ ${action} applied!`, 'success');
+      }
+    }
+  } catch(e) { resultDiv.textContent = '❌ Error: ' + e.message; }
+}
+
+// ── Quick Ask ───────────────────────────────────────────────────────────────
+async function quickAsk() {
+  const input = document.getElementById('quick-ask-input');
+  const question = input.value.trim();
+  if (!question) return;
+  input.value = '';
+  toast('⟳ Asking Forge…', 'info');
+  try {
+    const r = await api('POST', '/quick-ask', { question, projectId: selectedProject?.id });
+    showForgeAnswer(question, r.answer || r.result || 'No response', r.duration);
+  } catch(e) { toast('Quick ask failed: ' + e.message, 'error'); }
+}
+
+function showForgeAnswer(question, answer, duration) {
+  document.getElementById('forge-answer-panel')?.remove();
+  const panel = document.createElement('div');
+  panel.id = 'forge-answer-panel';
+  panel.style.cssText = 'position:fixed;bottom:80px;right:20px;width:440px;max-height:400px;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.5);z-index:999;overflow:hidden;display:flex;flex-direction:column;';
+  const durLabel = duration ? `<span style="color:var(--text3);font-weight:400;font-size:11px;">(${Math.round(duration/1000)}s)</span>` : '';
+  panel.innerHTML = `
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-weight:600;font-size:13px;">⚡ Forge Answer ${durLabel}</span>
+      <button onclick="document.getElementById('forge-answer-panel').remove()" style="background:none;border:none;cursor:pointer;color:var(--text2);font-size:18px;line-height:1;">×</button>
+    </div>
+    <div style="padding:8px 16px;color:var(--text3);font-size:11px;font-style:italic;border-bottom:1px solid var(--border);">${question.replace(/</g,'&lt;')}</div>
+    <div style="padding:14px 16px;overflow-y:auto;font-size:13px;line-height:1.6;white-space:pre-wrap;color:var(--text);flex:1;">${answer.replace(/</g,'&lt;')}</div>
+  `;
+  document.body.appendChild(panel);
+  setTimeout(() => panel.remove(), 30000);
+}
+
+// ── File Tree ──────────────────────────────────────────────────────────────
+async function loadProjectFileTree(projectId) {
+  try {
+    const r = await api('GET', `/project/${projectId}/files`);
+    const files = r.files || [];
+    if (!files.length) return '';
+    const icons = { js: '📄', ts: '📘', py: '🐍', json: '📋', md: '📝', sh: '⚙️', html: '🌐', css: '🎨', test: '🧪', rs: '🦀', go: '🐹', rb: '💎' };
+    return `<div class="file-tree">${files.map(f => {
+      const ext = f.split('.').pop() || '';
+      const icon = icons[ext] || '📄';
+      return `<div class="file-tree-item" onclick="openFileEditor('${projectId}','${f.replace(/'/g,"\\'")}')" title="${f}">${icon} ${f}</div>`;
+    }).join('')}</div>`;
+  } catch { return ''; }
+}
+
+// ── Copilot Mode ────────────────────────────────────────────────────────────
+function toggleCopilotMode(enabled) {
+  localStorage.setItem('forgeCopilotMode', enabled ? '1' : '0');
+  toast(enabled ? '⚡ Copilot mode ON — AI assists as you type' : '⚡ Copilot mode OFF', 'info');
+}
+
+// ── Metrics Quick Actions ───────────────────────────────────────────────────
+async function retryLowQuality() {
+  toast('⟳ Looking for low-quality tasks…', 'info');
+  try {
+    const r = await api('POST', '/task/retry-low-quality', {});
+    toast(r.message || `🔁 Retried ${r.count || 0} tasks`, 'success');
+  } catch(e) { toast('Retry failed: ' + e.message, 'error'); }
+}
+
+async function runImproveLoop() {
+  toast('🚀 Starting improve loop…', 'info');
+  try {
+    const r = await api('POST', '/task/improve-loop', {});
+    toast(r.message || '✅ Improve loop started', 'success');
+  } catch(e) { toast('Improve loop failed: ' + e.message, 'error'); }
+}
+
+// ── Auto-Build ────────────────────────────────────────────────────────────────
+let _autoBuildProject = null;
+let _runnerPollInterval = null;
+let _taskRefreshInterval = null;
+
+async function startAutoBuild(projectId) {
+  if (!projectId && selectedProject) projectId = selectedProject.id;
+  if (!projectId) return toast('Select a project first', 'error');
+  _autoBuildProject = projectId;
+
+  const panel = document.getElementById('auto-build-panel');
+  if (panel) { panel.style.display = 'block'; }
+  switchTab('chat');
+  document.getElementById('ab-status').textContent = 'Starting auto-build...';
+  document.getElementById('ab-count').textContent = '0 / ?';
+  document.getElementById('ab-bar').style.width = '0%';
+  document.getElementById('auto-build-log').innerHTML = '';
+  addBuildLog('🚀 Starting auto-build...');
+
+  try {
+    const r = await api('POST', `/project/${projectId}/auto-run`, { maxFails: 3 });
+    addBuildLog(`✅ Auto-run started — ${r.pending || r.total || '?'} tasks queued`);
+    document.getElementById('ab-count').textContent = `0 / ${r.pending || r.total || '?'}`;
+    toast(`⚡ Auto-Build started! ${r.pending || r.total || '?'} tasks to complete.`, 'success');
+    await refreshRunnerState(projectId);
+
+    // Poll runner state every 5s
+    if (_runnerPollInterval) clearInterval(_runnerPollInterval);
+    _runnerPollInterval = setInterval(async () => {
+      await refreshRunnerState(projectId);
+      const s = await api('GET', `/project/${projectId}/auto-run/status`).catch(() => ({}));
+      if (!s.running && s.pending === 0) {
+        clearInterval(_runnerPollInterval);
+        _runnerPollInterval = null;
+        if (_taskRefreshInterval) { clearInterval(_taskRefreshInterval); _taskRefreshInterval = null; }
+        addBuildLog(`🏁 Build complete — ${s.done || 0} tasks done`);
+        await loadProjects();
+      }
+    }, 5000);
+
+    // Auto-refresh task list every 15s while build is running
+    if (_taskRefreshInterval) clearInterval(_taskRefreshInterval);
+    _taskRefreshInterval = setInterval(async () => {
+      if (currentView === 'project' && selectedProject && _autoBuildProject === selectedProject.id) {
+        const detail = await api('GET', `/projects/${selectedProject.id}`).catch(() => null);
+        if (detail && detail.tasks) {
+          selectedProject = { ...selectedProject, tasks: detail.tasks, epics: detail.epics };
+          // Also refresh the global tasks array for this project
+          const others = tasks.filter(t => t.project_id !== selectedProject.id && t.project_name !== selectedProject.name);
+          tasks = [...others, ...(detail.tasks || [])];
+          const taskEl = document.getElementById('task-list-container');
+          if (taskEl) taskEl.innerHTML = renderTaskList(detail.tasks);
+        }
+      }
+    }, 15000);
+  } catch(e) {
+    addBuildLog('❌ Error: ' + e.message);
+    toast('Auto-build failed to start: ' + e.message, 'error');
+  }
+}
+
+async function stopAutoBuild(projectId) {
+  const pid = projectId || _autoBuildProject || selectedProject?.id;
+  if (!pid) return toast('Nothing running', 'info');
+  try {
+    await api('POST', `/project/${pid}/auto-run/stop`);
+    if (_runnerPollInterval) { clearInterval(_runnerPollInterval); _runnerPollInterval = null; }
+    if (_taskRefreshInterval) { clearInterval(_taskRefreshInterval); _taskRefreshInterval = null; }
+    toast('⏹ Auto-build stopped', 'info');
+    addBuildLog('⏹ Stopped by user');
+    await refreshRunnerState(pid);
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
+function addBuildLog(msg) {
+  const el = document.getElementById('auto-build-log');
+  if (!el) return;
+  const entry = document.createElement('div');
+  entry.className = 'sse-entry';
+  entry.innerHTML = `<span class="sse-icon">▶</span><span class="sse-text">${msg}</span><span class="sse-time">${new Date().toLocaleTimeString()}</span>`;
+  el.appendChild(entry);
+  el.scrollTop = el.scrollHeight;
+}
+
+function addAutoBuildLog(msg) {
+  const log = document.getElementById('auto-build-log');
+  if (!log) return;
+  const time = new Date().toLocaleTimeString();
+  const div = document.createElement('div');
+  div.innerHTML = `<span style="color:var(--text3)">[${time}]</span> ${msg}`;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+async function scaffoldCode(projectId) {
+  if (!projectId) return toast('No project selected', 'error');
+  toast('🏗 Scaffolding project files...', 'info');
+  try {
+    const r = await api('POST', `/project/${projectId}/scaffold-code`);
+    toast(`✅ Scaffolded ${r.written?.length || 0} files: ${(r.written||[]).join(', ')}`, 'success');
+    await refreshAll();
+  } catch(e) { toast('Scaffold failed: ' + e.message, 'error'); }
+}
+
+async function verifyOutput(projectId) {
+  if (!projectId) return toast('No project selected', 'error');
+  toast('▶ Running project output...', 'info');
+  try {
+    const r = await api('POST', `/project/${projectId}/verify-output`);
+    if (r.success) {
+      toast(`✅ Project runs! Output: ${(r.output||'').slice(0,100)}`, 'success');
+    } else {
+      toast(`❌ Run failed (exit ${r.exitCode}): ${(r.output||'').slice(0,150)}`, 'error');
+    }
+    addAutoBuildLog(`▶ Run ${r.success?'✅ SUCCESS':'❌ FAILED'}: ${r.command} → exit ${r.exitCode}`);
+    if (r.output) addAutoBuildLog(r.output.slice(0, 200));
+  } catch(e) { toast('Verify failed: ' + e.message, 'error'); }
+}
+
+init();
+</script>
+</body>
+</html>

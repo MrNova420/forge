@@ -270,11 +270,17 @@ function Sidebar({ tab, setTab, projects, running }) {
     poll(); const iv=setInterval(poll,6000); return()=>clearInterval(iv)
   },[])
 
-  // Track ctx used via SSE — sum tokens from done events
+  // Track ctx used via SSE pipeline events + chat responses
   useEffect(()=>{
     const es=new EventSource('/events')
     es.onmessage=e=>{ try{ const d=JSON.parse(e.data); if(d.type==='task_done'&&d.tokens) setCtxUsed(p=>p+d.tokens) }catch{} }
-    return()=>es.close()
+    // Listen for chat completions dispatched by Chat component
+    const onChatTokens=e=>{ if(e.detail?.promptTokens>0) setCtxUsed(e.detail.promptTokens) }
+    window.addEventListener('forge:chat-tokens', onChatTokens)
+    // Reset context counter when user starts a new chat session
+    const onNewChat=()=>setCtxUsed(0)
+    window.addEventListener('forge:new-chat', onNewChat)
+    return()=>{ es.close(); window.removeEventListener('forge:chat-tokens',onChatTokens); window.removeEventListener('forge:new-chat',onNewChat) }
   },[])
 
   const ctxPct = activeModel ? Math.min(100, Math.round((ctxUsed/(activeModel.ctx||4096))*100)) : 0
@@ -1313,6 +1319,8 @@ function Chat({ onSwitchToSessions, sessionToLoad, onSessionLoaded }) {
               finalDone=d
               const stats=d.tokens>0?{tokens:d.tokens,promptTokens:d.promptTokens,tokPerSec:d.tokPerSec,durationMs:d.durationMs||(Date.now()-sendStart)}:null
               setMsgs(m=>m.map(x=>x.id===streamId?{...x,streaming:false,stats}:x))
+              // Broadcast prompt token count to Sidebar context display
+              if(d.promptTokens>0) window.dispatchEvent(new CustomEvent('forge:chat-tokens',{detail:{promptTokens:d.promptTokens}}))
               // Auto-save session after every completed response
               setTimeout(()=>saveSession(),600)
               // Context usage warning \u2014 >70% of model ctx used
@@ -1623,7 +1631,7 @@ function Chat({ onSwitchToSessions, sessionToLoad, onSessionLoaded }) {
             style={{background:agentMode?'rgba(16,185,129,0.12)':'rgba(255,255,255,0.03)',color:agentMode?'#34d399':'#71717a',border:`1px solid ${agentMode?'rgba(16,185,129,0.25)':'rgba(255,255,255,0.08)'}`}}>
             {agentMode?'\ud83e\udd16 Agent ON':'\ud83e\udd16 Agent OFF'}
           </button>
-          <button onMouseDown={e=>e.preventDefault()} onClick={()=>{ setMsgs([{role:'assistant',content:"Fresh start! What do you want to build or ask?"}]); setBuildBanner(null); setCtxWarning(false); currentSessionIdRef.current=null; setCurrentSessionId(null); inputRef.current?.focus() }}
+          <button onMouseDown={e=>e.preventDefault()} onClick={()=>{ setMsgs([{role:'assistant',content:"Fresh start! What do you want to build or ask?"}]); setBuildBanner(null); setCtxWarning(false); currentSessionIdRef.current=null; setCurrentSessionId(null); window.dispatchEvent(new CustomEvent('forge:new-chat')); inputRef.current?.focus() }}
             className="px-2.5 py-1.5 rounded-xl text-[11px] text-zinc-500 border border-white/[0.06] hover:text-zinc-300 transition-all">
             Clear
           </button>
@@ -1646,7 +1654,7 @@ function Chat({ onSwitchToSessions, sessionToLoad, onSessionLoaded }) {
                 style={{background:'rgba(9,9,11,0.98)',border:'1px solid rgba(255,255,255,0.1)',backdropFilter:'blur(20px)'}}>
                 <div className="px-4 py-3 border-b flex items-center justify-between" style={{borderColor:'rgba(255,255,255,0.07)'}}>
                   <span className="text-xs font-semibold text-zinc-300">Chat History</span>
-                  <button onClick={()=>{ setMsgs([{role:'assistant',content:"Fresh start! What do you want to build or ask?"}]); currentSessionIdRef.current=null; setCurrentSessionId(null); setShowSessions(false) }}
+                  <button onClick={()=>{ setMsgs([{role:'assistant',content:"Fresh start! What do you want to build or ask?"}]); currentSessionIdRef.current=null; setCurrentSessionId(null); setShowSessions(false); window.dispatchEvent(new CustomEvent('forge:new-chat')) }}
                     className="text-[10px] text-zinc-600 hover:text-zinc-400 flex items-center gap-1">
                     <Plus size={9}/> New
                   </button>
