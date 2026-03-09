@@ -280,7 +280,19 @@ function Sidebar({ tab, setTab, projects, running }) {
     // Reset context counter when user starts a new chat session
     const onNewChat=()=>setCtxUsed(0)
     window.addEventListener('forge:new-chat', onNewChat)
-    return()=>{ es.close(); window.removeEventListener('forge:chat-tokens',onChatTokens); window.removeEventListener('forge:new-chat',onNewChat) }
+    // Show cloud model in sidebar when chat switches to cloud provider
+    const onActiveModel=e=>{
+      if(!e.detail) return
+      const {name,isCloud}=e.detail
+      if(isCloud){
+        const prov=name.split('/')[0]
+        const PCOL={openrouter:'#9333ea',openai:'#10a37f',anthropic:'#d97706',groq:'#f59e0b',google:'#4285f4'}
+        setActiveModel({name,vramMB:0,color:PCOL[prov]||'#6366f1',speed:'cloud',ctx:128000,vram:'☁',isCloud:true})
+        setCtxUsed(0)
+      }
+    }
+    window.addEventListener('forge:active-model', onActiveModel)
+    return()=>{ es.close(); window.removeEventListener('forge:chat-tokens',onChatTokens); window.removeEventListener('forge:new-chat',onNewChat); window.removeEventListener('forge:active-model',onActiveModel) }
   },[])
 
   const ctxPct = activeModel ? Math.min(100, Math.round((ctxUsed/(activeModel.ctx||4096))*100)) : 0
@@ -323,23 +335,28 @@ function Sidebar({ tab, setTab, projects, running }) {
           <div className="flex items-center gap-2">
             <Cpu size={11} style={{color: activeModel?.color||'#52525b'}} className="flex-shrink-0"/>
             <span className="text-[10px] text-zinc-500 font-medium uppercase tracking-widest">Active Model</span>
-            {activeModel && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" title="Loaded in VRAM"/>}
+            {activeModel && !activeModel.isCloud && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" title="Loaded in VRAM"/>}
+            {activeModel?.isCloud && <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded-full font-bold" style={{background:'rgba(147,51,234,0.15)',color:'#c084fc',border:'1px solid rgba(147,51,234,0.25)'}}>☁ Cloud</span>}
           </div>
 
           {activeModel ? (<>
             {/* Model name */}
             <div>
               <p className="text-[12px] font-semibold truncate" style={{color: activeModel.color}} title={activeModel.name}>
-                {activeModel.name.split(':')[0].replace('deepseek-','ds-').replace('qwen2.5-','qw-')}
+                {activeModel.isCloud
+                  ? (activeModel.name.split('/').slice(1).join('/') || activeModel.name).split(':')[0].slice(0,24)
+                  : activeModel.name.split(':')[0].replace('deepseek-','ds-').replace('qwen2.5-','qw-')}
               </p>
-              <p className="text-[10px] text-zinc-600">{activeModel.name.includes(':')?activeModel.name.split(':')[1]:''}</p>
+              <p className="text-[10px] text-zinc-600">
+                {activeModel.isCloud ? activeModel.name.split('/')[0] : (activeModel.name.includes(':') ? activeModel.name.split(':')[1] : '')}
+              </p>
             </div>
 
             {/* Specs row */}
             <div className="grid grid-cols-2 gap-1.5">
               {[
-                {label:'Speed', val: activeModel.speed!=='?'?`~${activeModel.speed} t/s`:'—', color:'#a78bfa'},
-                {label:'VRAM',  val: activeModel.vramMB>0?`${activeModel.vramMB}MB`: activeModel.vram!=='?'?activeModel.vram:'—', color:'#60a5fa'},
+                {label:'Speed', val: activeModel.isCloud?'API':activeModel.speed!=='?'?`~${activeModel.speed} t/s`:'—', color:'#a78bfa'},
+                {label: activeModel.isCloud?'Type':'VRAM', val: activeModel.isCloud?'☁ Cloud':activeModel.vramMB>0?`${activeModel.vramMB}MB`:activeModel.vram!=='?'?activeModel.vram:'—', color:'#60a5fa'},
               ].map(({label,val,color:c})=>(
                 <div key={label} className="px-2 py-1.5 rounded-lg text-center" style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.05)'}}>
                   <p className="text-[11px] font-bold" style={{color:c}}>{val}</p>
@@ -1283,6 +1300,9 @@ function Chat({ onSwitchToSessions, sessionToLoad, onSessionLoaded }) {
     loadTimerRef.current=setTimeout(()=>setLoadingMsg('Loading model into VRAM... (~30s on cold start)'),5000)
     const streamId=Date.now()
     setMsgs(m=>[...m,{role:'assistant',content:'',streaming:true,id:streamId,model}])
+    // Notify sidebar which model is active (works for both local + cloud)
+    const isCloud=model&&(model.includes('/')||model.startsWith('openai')||model.startsWith('anthropic')||model.startsWith('groq'))
+    if(isCloud) window.dispatchEvent(new CustomEvent('forge:active-model',{detail:{name:model,isCloud:true}}))
     // Build history \u2014 skip the very first assistant greeting (UI-only, never sent to model)
     const history=newMsgs
       .filter(m=>m.role==='user'||m.role==='assistant')

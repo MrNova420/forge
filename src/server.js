@@ -199,7 +199,12 @@ async function* streamChat(modelFull, messages, opts = {}) {
       if (!line.startsWith('data:')) continue;
       const chunk = line.slice(5).trim();
       if (chunk === '[DONE]') { yield { done: true }; continue; }
-      try { const d = JSON.parse(chunk); const tok = d.choices?.[0]?.delta?.content; if (tok) yield { token: tok }; } catch {}
+      try {
+        const d = JSON.parse(chunk);
+        const tok = d.choices?.[0]?.delta?.content; if (tok) yield { token: tok };
+        // Capture usage stats (OpenAI/OpenRouter send these in the last chunk)
+        if (d.usage?.prompt_tokens) yield { usage: { promptTokens: d.usage.prompt_tokens, completionTokens: d.usage.completion_tokens||0 } };
+      } catch {}
     }
   }
 }
@@ -5038,6 +5043,11 @@ After the plan say: "Ready to queue this for the dev team?"
         promptEvalCount = chunk.raw.prompt_eval_count || 0;
         const evalDuration = chunk.raw.eval_duration || 0;
         tokPerSec = evalCount > 0 && evalDuration > 0 ? Math.round((evalCount / evalDuration) * 1e9 * 10) / 10 : 0;
+      }
+      // Cloud provider usage stats
+      if (chunk.usage) {
+        promptEvalCount = chunk.usage.promptTokens || promptEvalCount;
+        evalCount = chunk.usage.completionTokens || evalCount;
       }
     }
 
