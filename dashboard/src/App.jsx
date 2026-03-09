@@ -360,13 +360,15 @@ function Sidebar({ tab, setTab, projects, running }) {
               <div className="flex justify-between mb-0.5">
                 <span className="text-[9px] text-zinc-700">Context</span>
                 <span className="text-[9px]" style={{color:ctxColor}}>
-                  {ctxUsed>0?`~${ctxUsed} / ${(activeModel.ctx/1000).toFixed(0)}k tok`:`${(activeModel.ctx/1000).toFixed(0)}k max`}
+                  {ctxUsed>0
+                    ? `${ctxUsed.toLocaleString()} used · ${Math.max(0,(activeModel.ctx||4096)-ctxUsed).toLocaleString()} left`
+                    : `${((activeModel.ctx||4096)/1000).toFixed(0)}k free`}
                 </span>
               </div>
               <div className="w-full h-1 rounded-full overflow-hidden" style={{background:'rgba(255,255,255,0.05)'}}>
                 <div className="h-full rounded-full transition-all" style={{width:`${ctxPct}%`, background:ctxColor}}/>
               </div>
-              {ctxPct>70 && <p className="text-[9px] text-amber-400 mt-0.5">⚠ Context {ctxPct}% full — consider new chat</p>}
+              {ctxPct>70 && <p className="text-[9px] text-amber-400 mt-0.5">⚠ {ctxPct}% full — start new chat to reset</p>}
             </div>
           </>) : (
             <div className="text-center py-2">
@@ -1065,6 +1067,7 @@ function Chat({ onSwitchToSessions, sessionToLoad, onSessionLoaded }) {
   const [showSessions,setShowSessions]=useState(false)
   const [currentSessionId,setCurrentSessionId]=useState(null)
   const currentSessionIdRef=useRef(null)  // ref for stale-closure-safe auto-save
+  const msgsRef=useRef([])  // always-current msgs for auto-save closure
   const [sessionSaving,setSessionSaving]=useState(false)
   const sessionsRef=useRef(null)
 
@@ -1074,6 +1077,8 @@ function Chat({ onSwitchToSessions, sessionToLoad, onSessionLoaded }) {
     if(d&&Array.isArray(d)) setSessions(d)
   }
   useEffect(()=>{ loadSessions() },[])
+  // Keep msgsRef always current so saveSession never captures a stale msgs closure
+  useEffect(()=>{ msgsRef.current=msgs },[msgs])
 
   // Close sessions panel on outside click
   useEffect(()=>{
@@ -1084,7 +1089,8 @@ function Chat({ onSwitchToSessions, sessionToLoad, onSessionLoaded }) {
   },[showSessions])
 
   const saveSession=async()=>{
-    if(msgs.filter(m=>m.role==='user').length===0) return
+    const currentMsgs=msgsRef.current
+    if(currentMsgs.filter(m=>m.role==='user').length===0) return
     setSessionSaving(true)
     try{
       const sid=currentSessionIdRef.current||undefined
@@ -1092,8 +1098,8 @@ function Chat({ onSwitchToSessions, sessionToLoad, onSessionLoaded }) {
         id:sid,
         title:'New Chat',
         model,
-        messages:JSON.stringify(msgs.filter(m=>m.role==='user'||m.role==='assistant').map(m=>({role:m.role,content:m.content,model:m.model,stats:m.stats}))),
-        tokenCount:msgs.reduce((s,m)=>s+(m.stats?.tokens||0),0)
+        messages:JSON.stringify(currentMsgs.filter(m=>m.role==='user'||m.role==='assistant').map(m=>({role:m.role,content:m.content,model:m.model,stats:m.stats}))),
+        tokenCount:currentMsgs.reduce((s,m)=>s+(m.stats?.tokens||0),0)
       })}).then(r=>r.json())
       if(d?.id){ currentSessionIdRef.current=d.id; setCurrentSessionId(d.id); await loadSessions() }
     } catch{}
@@ -1936,6 +1942,181 @@ const CustomTooltip=({active,payload,label})=>{
   )
 }
 
+
+// ── Cloud models tab extracted as proper component (hooks can't be in IIFE) ──
+function CloudModels({ cloudModels, providers }) {
+  const [cloudSearch, setCloudSearch] = useState('')
+  const [cloudProvider, setCloudProvider] = useState('all')
+  const q = cloudSearch.toLowerCase()
+
+  const grouped = {}
+  cloudModels.forEach(m => {
+    const id = m.id || m
+    const prov = id.split('/')[0]
+    if (!grouped[prov]) grouped[prov] = []
+    grouped[prov].push(m)
+  })
+  const providerList = ['all', ...Object.keys(grouped)]
+  const filtered = cloudModels.filter(m => {
+    const id = m.id || m
+    const prov = id.split('/')[0]
+    const name = (m.name || id).toLowerCase()
+    return (cloudProvider === 'all' || prov === cloudProvider) && (!q || name.includes(q) || id.toLowerCase().includes(q))
+  })
+  const freeCount = cloudModels.filter(m => m.free).length
+  const imageModelKeys = ['dall-e', 'flux', 'stable-diffusion', 'sdxl', 'imagen', 'firefly']
+  const isImg = id => imageModelKeys.some(k => (id || '').toLowerCase().includes(k))
+  const PCOL = { openrouter:'#9333ea', openai:'#10a37f', anthropic:'#d97706', groq:'#f59e0b', google:'#4285f4', custom:'#6366f1' }
+
+  if (Object.keys(providers).filter(n => n !== 'ollama').length === 0) return (
+    <div className="forge-card text-center py-12">
+      <p className="text-zinc-400 text-sm font-medium mb-2">No cloud providers configured</p>
+      <p className="text-zinc-600 text-xs">Go to <strong className="text-zinc-400">Settings → API Providers</strong> to add OpenAI, Anthropic, OpenRouter, etc.</p>
+    </div>
+  )
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2 flex-wrap items-center">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl flex-1 min-w-48" style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)'}}>
+          <Search size={12} style={{color:'#52525b',flexShrink:0}}/>
+          <input value={cloudSearch} onChange={e=>setCloudSearch(e.target.value)}
+            placeholder="Search cloud models..."
+            className="flex-1 bg-transparent text-xs text-white placeholder-zinc-600 focus:outline-none"/>
+          {cloudSearch && <button onClick={()=>setCloudSearch('')} className="text-zinc-600 hover:text-zinc-400"><X size={10}/></button>}
+        </div>
+        <div className="flex gap-1 flex-wrap">
+          {providerList.slice(0,6).map(p=>(
+            <button key={p} onClick={()=>setCloudProvider(p)}
+              className="px-2.5 py-1.5 rounded-lg text-[10px] font-medium transition-all capitalize"
+              style={cloudProvider===p?{background:'rgba(99,102,241,0.2)',color:'#a5b4fc',border:'1px solid rgba(99,102,241,0.3)'}:{background:'rgba(255,255,255,0.03)',color:'#52525b',border:'1px solid rgba(255,255,255,0.06)'}}>
+              {p==='all'?`All (${cloudModels.length})`:p} {p!=='all'&&`(${(grouped[p]||[]).length})`}
+            </button>
+          ))}
+        </div>
+        {freeCount>0 && <span className="text-[10px] px-2 py-1 rounded-lg font-bold" style={{background:'rgba(16,185,129,0.1)',color:'#34d399',border:'1px solid rgba(16,185,129,0.2)'}}>{freeCount} FREE</span>}
+      </div>
+
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          {label:'Cloud Models', val:cloudModels.length, icon:'☁', color:'#a78bfa'},
+          {label:'Free Models', val:freeCount, icon:'🆓', color:'#34d399'},
+          {label:'Providers', val:Object.keys(providers).filter(n=>n!=='ollama').length, icon:'🔌', color:'#60a5fa'},
+        ].map(({label,val,icon,color:c})=>(
+          <div key={label} className="forge-card text-center py-3">
+            <div className="text-lg mb-0.5">{icon}</div>
+            <div className="text-xl font-bold" style={{color:c}}>{val}</div>
+            <div className="text-[10px] text-zinc-600">{label}</div>
+          </div>
+        ))}
+      </div>
+
+      {filtered.length===0 ? (
+        <div className="forge-card text-center py-8">
+          <p className="text-zinc-500 text-sm">{cloudSearch?'No models match your search':'No cloud models — add a provider key in Settings'}</p>
+        </div>
+      ) : (
+        <div className="space-y-1">
+          {filtered.slice(0,200).map(m=>{
+            const id = m.id || m
+            const prov = id.split('/')[0]
+            const name = m.name || id.split('/').slice(1).join('/')
+            const pCol = PCOL[prov] || '#64748b'
+            return (
+              <div key={id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/[0.03] transition-colors"
+                style={{border:'1px solid rgba(255,255,255,0.04)'}}>
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{background: pCol}}/>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12px] font-medium text-zinc-300 truncate" title={id}>{name}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full capitalize" style={{background:pCol+'15',color:pCol}}>{prov}</span>
+                    {m.free && <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold" style={{background:'rgba(16,185,129,0.1)',color:'#34d399'}}>FREE</span>}
+                    {isImg(id) && <span className="text-[10px] text-zinc-600">🖼 image</span>}
+                    {m.context && <span className="text-[10px] text-zinc-700">{m.context>=1000?`${Math.round(m.context/1000)}k ctx`:m.context+' ctx'}</span>}
+                  </div>
+                </div>
+                <code className="text-[10px] text-zinc-600 font-mono hidden md:block truncate max-w-[160px]">{prov}/{m.id?.split('/').slice(1).join('/')||id}</code>
+              </div>
+            )
+          })}
+          {filtered.length>200 && <p className="text-center text-[11px] text-zinc-600 py-2">Showing 200 of {filtered.length} — use search to filter</p>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Backup panel extracted as proper component ──
+function BackupPanel() {
+  const [backupFiles, setBackupFiles] = useState([])
+  const [backing, setBacking] = useState(false)
+  const [backupMsg, setBackupMsg] = useState('')
+  useEffect(()=>{ apiFetch('/backup/list').then(d=>{ if(d?.files) setBackupFiles(d.files) }) },[])
+  const runBackup = async () => {
+    setBacking(true); setBackupMsg('')
+    const r = await fetch('/backup/now',{method:'POST'}).then(x=>x.json()).catch(()=>null)
+    setBacking(false)
+    if(r?.ok){ setBackupMsg(`✅ Backed up ${r.files} files`); apiFetch('/backup/list').then(d=>{ if(d?.files) setBackupFiles(d.files) }) }
+    else setBackupMsg('⚠ Backup failed')
+    setTimeout(()=>setBackupMsg(''),4000)
+  }
+  return (
+    <div className="forge-card">
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-sm">🛡</span>
+        <h3 className="text-xs font-semibold text-zinc-300 uppercase tracking-widest flex-1">Data Safety & Backups</h3>
+      </div>
+      <div className="grid grid-cols-3 gap-3 mb-4">
+        {[
+          {label:'Databases', val:'WAL mode', icon:'🗄', color:'#60a5fa'},
+          {label:'Backups Saved', val:backupFiles.length, icon:'📦', color:'#10b981'},
+          {label:'Auto-Save', val:'30 min', icon:'⏱', color:'#d97706'},
+        ].map(({label,val,icon,color:c})=>(
+          <div key={label} className="text-center py-3 rounded-xl" style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)'}}>
+            <div className="text-lg mb-0.5">{icon}</div>
+            <div className="text-base font-bold" style={{color:c}}>{val}</div>
+            <div className="text-[10px] text-zinc-600">{label}</div>
+          </div>
+        ))}
+      </div>
+      <ul className="space-y-1 mb-4">
+        {[
+          {icon:'✅', text:'project.db — projects, epics, tasks, model stats, chat sessions'},
+          {icon:'✅', text:'agent_memory.db — agent scores and reflection history'},
+          {icon:'✅', text:'providers.json — API keys (atomic write, no corruption on crash)'},
+          {icon:'✅', text:'session-memory.json — cross-session best practices'},
+        ].map(({icon,text})=>(
+          <li key={text} className="flex items-start gap-2 text-[11px] text-zinc-500">
+            <span className="flex-shrink-0">{icon}</span>{text}
+          </li>
+        ))}
+      </ul>
+      <div className="flex items-center gap-3 flex-wrap">
+        <button onClick={runBackup} disabled={backing}
+          className="px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all disabled:opacity-40"
+          style={{background:'rgba(16,185,129,0.1)',color:'#34d399',border:'1px solid rgba(16,185,129,0.2)'}}>
+          <span>{backing?'⏳':'💾'}</span>{backing?'Backing up...':'Backup Now'}
+        </button>
+        {backupMsg && <span className="text-[11px]" style={{color:backupMsg.startsWith('✅')?'#34d399':'#f59e0b'}}>{backupMsg}</span>}
+      </div>
+      {backupFiles.length>0 && (
+        <div className="mt-4">
+          <p className="text-[10px] text-zinc-700 mb-2 uppercase tracking-widest">Recent backup files</p>
+          <div className="space-y-1 max-h-40 overflow-y-auto forge-scroll">
+            {backupFiles.slice(0,10).map(f=>(
+              <div key={f.name} className="flex items-center gap-3 py-1 px-2 rounded-lg text-[11px]" style={{background:'rgba(255,255,255,0.02)'}}>
+                <span className="text-zinc-600 flex-1 truncate font-mono">{f.name}</span>
+                <span className="text-zinc-700 flex-shrink-0">{f.size>1024*1024?`${(f.size/1024/1024).toFixed(1)}MB`:`${(f.size/1024).toFixed(0)}KB`}</span>
+                <span className="text-zinc-700 flex-shrink-0">{new Date(f.mtime).toLocaleDateString()}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function Models() {
   const [stats,setStats]=useState(null)
   const [history,setHistory]=useState([])
@@ -2229,120 +2410,7 @@ function Models() {
       )}
 
       {/* Cloud models */}
-      {tab==='cloud' && (()=>{
-        const [cloudSearch,setCloudSearch]=React.useState('')
-        const [cloudProvider,setCloudProvider]=React.useState('all')
-        const q=cloudSearch.toLowerCase()
-
-        // Group cloudModels by provider
-        const grouped={}
-        cloudModels.forEach(m=>{
-          const id=m.id||m
-          const prov=id.split('/')[0]
-          if(!grouped[prov]) grouped[prov]=[]
-          grouped[prov].push(m)
-        })
-        const providerList=['all',...Object.keys(grouped)]
-
-        const filtered=cloudModels.filter(m=>{
-          const id=m.id||m
-          const prov=id.split('/')[0]
-          const name=(m.name||id).toLowerCase()
-          return (cloudProvider==='all'||prov===cloudProvider) && (!q||name.includes(q)||id.toLowerCase().includes(q))
-        })
-
-        const freeCount=cloudModels.filter(m=>m.free).length
-        const imageModels=['dall-e','flux','stable-diffusion','sdxl','imagen','firefly']
-        const isImg=id=>imageModels.some(k=>(id||'').toLowerCase().includes(k))
-
-        if(Object.keys(providers).filter(n=>n!=='ollama').length===0) return (
-          <div className="forge-card text-center py-12">
-            <p className="text-zinc-400 text-sm font-medium mb-2">No cloud providers configured</p>
-            <p className="text-zinc-600 text-xs">Go to <strong className="text-zinc-400">Settings → API Providers</strong> to add OpenAI, Anthropic, OpenRouter, etc.</p>
-          </div>
-        )
-
-        return (
-          <div className="space-y-4">
-            {/* Search + filter bar */}
-            <div className="flex gap-2 flex-wrap items-center">
-              <div className="flex items-center gap-2 px-3 py-2 rounded-xl flex-1 min-w-48" style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)'}}>
-                <Search size={12} style={{color:'#52525b',flexShrink:0}}/>
-                <input value={cloudSearch} onChange={e=>setCloudSearch(e.target.value)}
-                  placeholder="Search cloud models..."
-                  className="flex-1 bg-transparent text-xs text-white placeholder-zinc-600 focus:outline-none"/>
-                {cloudSearch && <button onClick={()=>setCloudSearch('')} className="text-zinc-600 hover:text-zinc-400"><X size={10}/></button>}
-              </div>
-              <div className="flex gap-1 flex-wrap">
-                {providerList.slice(0,6).map(p=>(
-                  <button key={p} onClick={()=>setCloudProvider(p)}
-                    className="px-2.5 py-1.5 rounded-lg text-[10px] font-medium transition-all capitalize"
-                    style={cloudProvider===p?{background:'rgba(99,102,241,0.2)',color:'#a5b4fc',border:'1px solid rgba(99,102,241,0.3)'}:{background:'rgba(255,255,255,0.03)',color:'#52525b',border:'1px solid rgba(255,255,255,0.06)'}}>
-                    {p==='all'?`All (${cloudModels.length})`:p} {p!=='all'&&`(${(grouped[p]||[]).length})`}
-                  </button>
-                ))}
-              </div>
-              {freeCount>0 && <span className="text-[10px] px-2 py-1 rounded-lg font-bold" style={{background:'rgba(16,185,129,0.1)',color:'#34d399',border:'1px solid rgba(16,185,129,0.2)'}}>{freeCount} FREE</span>}
-            </div>
-
-            {/* Stats row */}
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                {label:'Total Models', val:cloudModels.length, icon:'☁'},
-                {label:'Free Models',  val:freeCount,          icon:'🆓', color:'#34d399'},
-                {label:'Image Models', val:cloudModels.filter(m=>isImg(m.id||m)).length, icon:'🎨', color:'#a78bfa'},
-              ].map(({label,val,icon,color:c})=>(
-                <div key={label} className="forge-card text-center py-3">
-                  <div className="text-lg mb-0.5">{icon}</div>
-                  <div className="text-xl font-bold" style={{color:c||'white'}}>{val}</div>
-                  <div className="text-[10px] text-zinc-600">{label}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Model grid */}
-            {filtered.length===0 ? (
-              <div className="forge-card text-center py-10">
-                <p className="text-zinc-500 text-sm">No models match "<span className="text-zinc-300">{cloudSearch}</span>"</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {filtered.map((m,i)=>{
-                  const mid=m.id||m
-                  const prov=mid.split('/')[0]
-                  const displayName=m.name||mid.split('/').slice(1).join('/')||mid
-                  const pCol=PROVIDER_COLORS[prov]||'#64748b'
-                  const ctxK=m.context?Math.round(m.context/1000)+'k':null
-                  const imgModel=isImg(mid)
-                  return (
-                    <div key={mid} style={{animation:`fadeSlideIn 0.25s ease ${Math.min(i,20)*30}ms both`}}>
-                      <div className="px-4 py-3 rounded-xl transition-all hover:bg-white/[0.03]"
-                        style={{background:'rgba(255,255,255,0.02)',border:`1px solid ${m.free?'rgba(16,185,129,0.15)':imgModel?'rgba(167,139,250,0.15)':'rgba(255,255,255,0.06)'}`}}>
-                        <div className="flex items-start gap-2">
-                          <div className="w-2 h-2 rounded-full mt-1 flex-shrink-0" style={{background:m.free?'#10b981':pCol}}/>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-xs font-semibold text-zinc-200 truncate">{displayName}</span>
-                              {m.free && <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0" style={{background:'rgba(16,185,129,0.15)',color:'#34d399',border:'1px solid rgba(16,185,129,0.25)'}}>FREE</span>}
-                              {imgModel && <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0" style={{background:'rgba(167,139,250,0.15)',color:'#a78bfa',border:'1px solid rgba(167,139,250,0.25)'}}>🎨 IMG</span>}
-                            </div>
-                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                              <span className="text-[10px] capitalize font-medium" style={{color:pCol}}>{prov}</span>
-                              {ctxK && <><span className="text-[10px] text-zinc-700">·</span><span className="text-[10px] text-zinc-600">{ctxK} ctx</span></>}
-                              <span className="text-[10px] text-zinc-700">·</span>
-                              <span className="text-[10px] text-zinc-600 font-mono truncate max-w-32">{mid.split('/').slice(1).join('/')}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )
-      })()}
+      {tab==='cloud' && <CloudModels cloudModels={cloudModels} providers={providers}/>}
 
       {/* Benchmarks */}
       {tab==='benchmarks' && (
@@ -2954,80 +3022,7 @@ function Settings() {
       </div>
 
       {/* ── Data Safety & Backups ── */}
-      {(()=>{
-        const [backupFiles,setBackupFiles]=React.useState([])
-        const [backing,setBacking]=React.useState(false)
-        const [backupMsg,setBackupMsg]=React.useState('')
-        React.useEffect(()=>{ apiFetch('/backup/list').then(d=>{ if(d?.files) setBackupFiles(d.files) }) },[])
-        const runBackup=async()=>{
-          setBacking(true); setBackupMsg('')
-          const r=await fetch('/backup/now',{method:'POST'}).then(x=>x.json()).catch(()=>null)
-          setBacking(false)
-          if(r?.ok){ setBackupMsg(`✅ Backup complete — ${r.files} file(s) saved`) }
-          else { setBackupMsg('⚠ Backup failed') }
-          apiFetch('/backup/list').then(d=>{ if(d?.files) setBackupFiles(d.files) })
-          setTimeout(()=>setBackupMsg(''),6000)
-        }
-        return (
-          <div className="forge-card">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-sm">💾</span>
-              <h3 className="text-xs font-semibold text-zinc-300 uppercase tracking-widest">Data Safety &amp; Backups</h3>
-              <span className="text-[10px] text-zinc-600 ml-1">Auto-backup every 30 min · keeps last 5 per file</span>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-              {[
-                {label:'DBs Tracked', val:'3', icon:'🗄', color:'#7c3aed'},
-                {label:'JSON Files', val:'2', icon:'📄', color:'#0891b2'},
-                {label:'Backups Saved', val:backupFiles.length, icon:'📦', color:'#10b981'},
-                {label:'Auto-Save', val:'30 min', icon:'⏱', color:'#d97706'},
-              ].map(({label,val,icon,color:c})=>(
-                <div key={label} className="p-3 rounded-xl text-center" style={{background:'rgba(255,255,255,0.025)',border:'1px solid rgba(255,255,255,0.06)'}}>
-                  <div className="text-base mb-1">{icon}</div>
-                  <div className="text-lg font-bold" style={{color:c}}>{val}</div>
-                  <div className="text-[10px] text-zinc-600">{label}</div>
-                </div>
-              ))}
-            </div>
-            <div className="p-3 rounded-xl mb-4 text-[11px] text-zinc-500 space-y-1" style={{background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.05)'}}>
-              {[
-                {icon:'✅', text:'project.db — projects, epics, tasks, model stats, chat sessions'},
-                {icon:'✅', text:'agent_memory.db — agent history, reflection scores, error patterns'},
-                {icon:'✅', text:'providers.json — API keys &amp; cloud model list (atomic write)'},
-                {icon:'✅', text:'session-memory.json — best practices &amp; agent learnings (atomic write)'},
-                {icon:'✅', text:'WAL journal mode — safe concurrent reads during writes'},
-              ].map(({icon,text},i)=>(
-                <div key={i} className="flex items-center gap-2">
-                  <span>{icon}</span>
-                  <span dangerouslySetInnerHTML={{__html:text}}/>
-                </div>
-              ))}
-            </div>
-            <div className="flex items-center gap-3">
-              <button onClick={runBackup} disabled={backing}
-                className="px-4 py-2 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 flex items-center gap-2"
-                style={{background:'rgba(16,185,129,0.12)',color:'#34d399',border:'1px solid rgba(16,185,129,0.2)'}}>
-                <span>{backing?'⏳':'💾'}</span>{backing?'Backing up...':'Backup Now'}
-              </button>
-              {backupMsg && <span className="text-[11px]" style={{color:backupMsg.startsWith('✅')?'#34d399':'#f59e0b'}}>{backupMsg}</span>}
-            </div>
-            {backupFiles.length>0 && (
-              <div className="mt-4">
-                <p className="text-[10px] text-zinc-700 mb-2 uppercase tracking-widest">Recent backup files</p>
-                <div className="space-y-1 max-h-40 overflow-y-auto forge-scroll">
-                  {backupFiles.slice(0,10).map(f=>(
-                    <div key={f.name} className="flex items-center gap-3 py-1 px-2 rounded-lg text-[11px]" style={{background:'rgba(255,255,255,0.02)'}}>
-                      <span className="text-zinc-600 flex-1 truncate font-mono">{f.name}</span>
-                      <span className="text-zinc-700 flex-shrink-0">{f.size>1024*1024?`${(f.size/1024/1024).toFixed(1)}MB`:`${(f.size/1024).toFixed(0)}KB`}</span>
-                      <span className="text-zinc-700 flex-shrink-0">{new Date(f.mtime).toLocaleDateString()}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )
-      })()}
+      <BackupPanel/>
 
     </div>
   )
